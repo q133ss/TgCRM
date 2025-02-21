@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\TelegramService;
+use App\Services\UserService;
 use Illuminate\Http\Request;
 
 class TelegramController extends Controller
@@ -12,7 +14,8 @@ class TelegramController extends Controller
         $update = json_decode($request->getContent(), true);
 
         if (isset($update['message'])) {
-            $this->processMessage($update['message']);
+            $user = (new UserService())->checkAndCreate($update['message']);
+            (new TelegramService())->processMessage($update['message'], $user);
         }
 
         return response('OK', 200);

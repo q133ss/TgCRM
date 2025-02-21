@@ -3,7 +3,6 @@
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
+    dd(\Carbon\Carbon::MONDAY);
     return view('welcome');
 });
-
-Route::post('/telegram/webhook', [\App\Http\Controllers\TelegramController::class, 'handle']);

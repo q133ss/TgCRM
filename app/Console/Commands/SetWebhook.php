@@ -28,7 +28,7 @@ class SetWebhook extends Command
         $token = config('services.telegram.token');
         $url = "https://api.telegram.org/bot$token/setWebhook";
 
-        $webhookUrl = env('APP_URL') . '/telegram/webhook';
+        $webhookUrl = env('APP_URL') . '/api/telegram/webhook';
         $data = [
             'url' => $webhookUrl,
         ];
