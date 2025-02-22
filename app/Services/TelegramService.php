@@ -52,7 +52,9 @@ class TelegramService
                     $files[] = end($message['photo']); // Берем последнее фото (наибольшее разрешение)
                 }
                 // Создаем задачу
-                (new TaskService())->create($chatId, $text, $user, $files);
+                $taskService = new TaskService();
+                $project = $taskService->checkCreateProject($chatId, $user, false);
+                $taskService->create($chatId, $text, $user, $project, $files);
             }
         }
         // Логика для группового чата
@@ -72,7 +74,7 @@ class TelegramService
             }
         }
     }
-    private function sendMessage($chatId, $text)
+    public function sendMessage($chatId, $text)
     {
         $token = config('services.telegram.token');
         $url = "https://api.telegram.org/bot$token/sendMessage";
