@@ -38,6 +38,10 @@ return [
     'telegram' => [
         'token' => env('BOT_TOKEN'),
         'username' => env('BOT_USERNAME')
-    ]
+    ],
 
+    'yandex' => [
+        'folder_id' => env('YANDEX_FOLDER_ID'),
+        'iam_token' => env('YANDEX_IAM_TOKEN')
+    ]
 ];

@@ -41,15 +41,14 @@ class TelegramService
         if (!$isGroupChat) {
             if ($voice) {
                 // Обработка голосовых сообщений
-                $this->recognizeSpeech($chatId, $voice);
+                $this->voiceTask($chatId, $voice, $user, $project);
             } elseif ((isset($document) && !empty($document)) || (isset($photo) && !empty($photo))) {
                 // Используем caption, если text пустой
                 $description = !empty($text) ? $text : $caption;
 
                 if (empty($description)) {
                     // Если есть файл, но нет текста или описания
-                    \Log::info('txt: ' . $text . ', caption: ' . $caption);
-                    $this->sendMessage($chatId, 'Пожалуйста, добавьте описание к файлу!!!');
+                    $this->sendMessage($chatId, 'Пожалуйста, добавьте описание к файлу.');
                 } else {
                     // Если есть файл и текст/описание
                     $this->createTaskWithFiles($chatId, $description, $user, $project, $document ?? end($photo));
@@ -103,32 +102,6 @@ class TelegramService
         ]));
     }
 
-    # todo вынести в другие сервисы!
-    private function recognizeSpeech($chatId, $voice)
-    {
-        $fileId = $voice['file_id'];
-        $filePath = $this->getFileUrl($fileId);
-
-        // Здесь можно вызвать API для распознавания речи
-        // Например, используя Google Speech-to-Text
-        $recognizedText = 'Привет! Это ваше голосовое сообщение.'; // Заглушка
-
-        $this->sendMessage($chatId, "Вы сказали: $recognizedText");
-    }
-
-    private function getFileUrl($fileId)
-    {
-        $token = config('services.telegram.token');
-        $url = "https://api.telegram.org/bot$token/getFile?file_id=$fileId";
-        $response = json_decode(file_get_contents($url), true);
-
-        if ($response['ok']) {
-            return "https://api.telegram.org/file/bot$token/" . $response['result']['file_path'];
-        }
-
-        return null;
-    }
-
     // Создание задачи из группы
     private function createTaskFromGroup($chatId, $text, $mentionedUsers)
     {
@@ -138,16 +111,17 @@ class TelegramService
         $this->sendMessage($chatId, "Задача создана: $taskDescription\nОтветственные: $mentionedUsernames");
     }
 
-    private function createTaskFromGroupWithFiles($chatId, $text, $file){
-        $fileId = $file['file_id'];
-        $fileUrl = $this->getFileUrl($fileId);
-        $this->sendMessage("Задача с файлом \nФайл: [$fileUrl]($fileUrl)");
-    }
-
     // Создание задачи с файлами
-
     private function createTaskWithFiles($chatId, $text, $user, $project, $file)
     {
         (new TaskService())->create($chatId, $text, $user, $project,[$file]);
+    }
+
+    private function voiceTask($chatId, $voice, $user, $project)
+    {
+        $text = (new YandexService())->recognizeSpeech($chatId, $voice);
+        if($text != null){
+            (new TaskService())->create($chatId, $text, $user, $project);
+        }
     }
 }
