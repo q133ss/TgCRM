@@ -12,4 +12,9 @@ class Task extends Model
     {
         return $this->hasOne(Column::class, 'id', 'column_id');
     }
+
+    public function files(): \Illuminate\Database\Eloquent\Relations\MorphMany
+    {
+        return $this->morphMany(File::class, 'fileable');
+    }
 }

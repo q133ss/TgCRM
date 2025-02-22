@@ -8,12 +8,16 @@ class TelegramService
 {
     public function processMessage($message, User $user)
     {
+        $taskService = new TaskService();
         $chatId = $message['chat']['id'];
         $text = $message['text'] ?? '';
+        $caption = $message['caption'] ?? '';
         $entities = $message['entities'] ?? [];
         $voice = $message['voice'] ?? null;
         $document = $message['document'] ?? null;
         $photo = $message['photo'] ?? null;
+
+        $project = $taskService->checkCreateProject($chatId, $user, false);
 
         // Проверяем, является ли чат групповым
         $isGroupChat = $message['chat']['type'] === 'group' || $message['chat']['type'] === 'supergroup';
@@ -38,9 +42,18 @@ class TelegramService
             if ($voice) {
                 // Обработка голосовых сообщений
                 $this->recognizeSpeech($chatId, $voice);
-            } elseif (($document || $photo) && !$text) {
-                // Если есть файл, но нет текста
-                $this->sendMessage($chatId, 'Пожалуйста, добавьте описание к файлу.');
+            } elseif ((isset($document) && !empty($document)) || (isset($photo) && !empty($photo))) {
+                // Используем caption, если text пустой
+                $description = !empty($text) ? $text : $caption;
+
+                if (empty($description)) {
+                    // Если есть файл, но нет текста или описания
+                    \Log::info('txt: ' . $text . ', caption: ' . $caption);
+                    $this->sendMessage($chatId, 'Пожалуйста, добавьте описание к файлу!!!');
+                } else {
+                    // Если есть файл и текст/описание
+                    $this->createTaskWithFiles($chatId, $description, $user, $project, $document ?? end($photo));
+                }
             } elseif ($text) {
                 // Обработка обычных текстовых сообщений
                 $files = [];
@@ -52,8 +65,6 @@ class TelegramService
                     $files[] = end($message['photo']); // Берем последнее фото (наибольшее разрешение)
                 }
                 // Создаем задачу
-                $taskService = new TaskService();
-                $project = $taskService->checkCreateProject($chatId, $user, false);
                 $taskService->create($chatId, $text, $user, $project, $files);
             }
         }
@@ -135,11 +146,8 @@ class TelegramService
 
     // Создание задачи с файлами
 
-    private function createTaskWithFiles($chatId, $text, $file)
+    private function createTaskWithFiles($chatId, $text, $user, $project, $file)
     {
-        $fileId = $file['file_id'];
-        $fileUrl = $this->getFileUrl($fileId);
-
-        $this->sendMessage($chatId, "Задача создана: $text\nФайл: [$fileUrl]($fileUrl)");
+        (new TaskService())->create($chatId, $text, $user, $project,[$file]);
     }
 }
