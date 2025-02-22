@@ -55,7 +55,7 @@ class TaskService
 
         // Устанавливаем напоминание, если указано время
         if ($reminderTime) {
-            $this->scheduleReminder($task, $reminderTime);
+            $this->scheduleReminder($task, $reminderTime, $chatId);
         }
 
         // Форматируем ответ для пользователя
@@ -156,11 +156,20 @@ class TaskService
         return $localPath;
     }
 
-    private function scheduleReminder(Task $task, $minutesBefore)
+    private function scheduleReminder(Task $task, $minutesBefore, string $chatId)
     {
-        $reminderTime = now()->subMinutes($minutesBefore)->setTimeFromTimeString($task->time);
+        if($task->time != null) {
+            $reminderTime = now()->subMinutes($minutesBefore)->setTimeFromTimeString($task->time);
 
-        dispatch(new SendReminderJob($task))->delay($reminderTime);
+            dispatch(new SendReminderJob($task, $chatId))->delay($reminderTime);
+
+            (new TelegramService())->sendMessage(
+                $chatId,
+                "✅ Напоминание для задачи «{$task->title}» успешно установлено на {$reminderTime->format('H:i')}."
+            );
+        }
+
+        (new TelegramService())->sendMessage($chatId, '⏰ Не удалось установить напоминание для задачи. Время выполнения не указано.');
     }
 
     public function checkCreateProject(string $chatId, User $user, bool $isGroup)
