@@ -6,6 +6,7 @@ use App\Jobs\SendReminderJob;
 use App\Models\Column;
 use App\Models\File;
 use App\Models\Project;
+use App\Models\Role;
 use App\Models\Task;
 use App\Models\User;
 use Carbon\Carbon;
@@ -29,7 +30,7 @@ class TaskService
         // Создаем задачу
         $task = Task::create([
             'title' => $cleanText,
-            'column_id' => $project->columns?->sortByDesc('order')->pluck('id')->first(),
+            'column_id' => $project->columns?->sortBy('order')->pluck('id')->first(),
             'creator_id' => $user->id,
             'date' => $parsedDate['date'] ?? null,
             'time' => $parsedDate['time'] ?? null,
@@ -67,8 +68,19 @@ class TaskService
             $cleanText .= " Время {$parsedDate['time']}";
         }
 
+        $keyboard = [
+            [
+                [
+                    'text' => 'Открыть',
+                    'web_app' => [
+                        'url' => config('app.url').'/project/'.$project->id.'?uid='.$user->telegram_id.'&task='.$task->id
+                    ]
+                ]
+            ]
+        ];
+
         // Отправляем подтверждение пользователю
-        (new TelegramService())->sendMessage($chatId, "Задача создана: $cleanText");
+        (new TelegramService())->sendMessage($chatId, "Задача создана: $cleanText", $keyboard);
     }
 
     private function parseDate($text): array
@@ -187,6 +199,13 @@ class TaskService
                 ]);
 
                 (new Column())->createDefault($project->id);
+
+                DB::table('project_users')->insert([
+                    'project_id' => $project->id,
+                    'user_id' => $user->id,
+                    'role_id' => Role::where('slug', 'owner')->pluck('id')->first()
+                ]);
+
                 DB::commit();
                 return $project;
             }catch (\Exception $e){
@@ -220,5 +239,30 @@ class TaskService
 
         // Удаляем лишние пробелы
         return trim(preg_replace('/\s+/', ' ', $text));
+    }
+
+    public function getAllByProject($project, $user){
+        return Task::leftJoin('task_responsibles', 'task_id', 'tasks.id')
+            ->where('task_responsibles.user_id', $user->id)
+            ->leftJoin('columns', 'columns.id', 'tasks.column_id')
+            ->where('columns.project_id', $project->id)
+            ->select('tasks.*')
+            ->get();
+    }
+
+    public function groupTasksByDate($tasks)
+    {
+        $groupedTasks = ['no_date' => []]; // Инициализируем группу без даты
+
+        foreach ($tasks as $task) {
+            if ($task->date) {
+                $date = \Carbon\Carbon::parse($task->date)->format('Y-m-d'); // Нормализуем дату
+                $groupedTasks[$date][] = $task;
+            } else {
+                $groupedTasks['no_date'][] = $task;
+            }
+        }
+
+        return $groupedTasks;
     }
 }

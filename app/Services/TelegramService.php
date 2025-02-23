@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use Carbon\Carbon;
 
 class TelegramService
 {
@@ -34,6 +35,23 @@ class TelegramService
                 } else {
                     $mentionedUsers[] = $mentionedUsername;
                 }
+            }
+        }
+
+        // Обработка команд
+        if (isset($entities[0]) && $entities[0]['type'] === 'bot_command') {
+            $command = substr($text, 0, strpos($text, ' ') ?: strlen($text)); // Извлекаем команду
+
+            switch ($command) {
+                case '/start':
+                    $this->handleStartCommand($chatId);
+                    return;
+                case '/tasks':
+                    $this->handleTasksCommand($chatId, $user, $project);
+                    return;
+                case '/help':
+                    $this->handleHelpCommand($chatId);
+                    return;
             }
         }
 
@@ -84,15 +102,25 @@ class TelegramService
             }
         }
     }
-    public function sendMessage($chatId, $text)
+    public function sendMessage($chatId, $text, $keyboard = [])
     {
         $token = config('services.telegram.token');
         $url = "https://api.telegram.org/bot$token/sendMessage";
+
+        // Создаем базовый массив данных для отправки
         $data = [
             'chat_id' => $chatId,
             'text' => $text,
         ];
 
+        // Если передан массив $keyboard, добавляем его как InlineKeyboard
+        if (!empty($keyboard)) {
+            $data['reply_markup'] = json_encode([
+                'inline_keyboard' => $keyboard,
+            ]);
+        }
+
+        // Отправляем запрос к Telegram API
         file_get_contents($url, false, stream_context_create([
             'http' => [
                 'method' => 'POST',
@@ -123,5 +151,71 @@ class TelegramService
         if($text != null){
             (new TaskService())->create($chatId, $text, $user, $project);
         }
+    }
+
+    private function handleStartCommand($chatId){
+        $botName = config('services.telegram.username');
+        $this->sendMessage($chatId, "🤖 Привет, это « $botName » — ваш бот-ассистент и трекер задач для Telegram!
+
+« $botName » поможет планировать задачи в командах прямо из чатов, а также управлять личными делами и календарём. ⏰
+
+В следующих 10 сообщениях мы кратко расскажем о ключевых функциях.
+
+📚 Подробные инструкции всегда доступны в документации на сайте или из команды /help в боте.
+
+Если возникнут вопросы — пишите в чат поддержки, и мы с радостью поможем! 💬
+
+Нажмите Далее ➡️, чтобы узнать, как ставить задачи в боте.");
+    }
+
+    private function handleTasksCommand($chatId, $user, $project)
+    {
+        // Получаем все задачи для проекта и пользователя
+        $tasks = (new TaskService())->getAllByProject($project, $user);
+
+        // Группируем задачи по дате
+        $groupedTasks = (new TaskService())->groupTasksByDate($tasks);
+
+        // Формируем сообщение
+        $response = "Ваши текущие задачи:\n\n";
+
+        // Задачи без даты
+        if (!empty($groupedTasks['no_date'])) {
+            $response .= "Без даты:\n";
+            foreach ($groupedTasks['no_date'] as $task) {
+                $response .= "* {$task->title}\n";
+            }
+            $response .= "\n"; // Добавляем пустую строку между группами
+        }
+
+        // Задачи с датой
+        ksort($groupedTasks); // Сортируем группы по дате
+        foreach ($groupedTasks as $date => $tasksForDate) {
+            if ($date === 'no_date') {
+                continue; // Пропускаем группу без даты (она уже обработана выше)
+            }
+
+            // Форматируем дату
+            $formattedDate = $date; //Carbon::parse($date)->format('d.m.Y');
+            $response .= "$formattedDate:\n";
+
+            foreach ($tasksForDate as $task) {
+                $title = $task->title;
+
+                $response .= "* {$title}\n";
+            }
+
+            $response .= "\n"; // Добавляем пустую строку между группами
+        }
+
+        // Отправляем сообщение
+        $this->sendMessage($chatId, $response);
+    }
+    private function handleHelpCommand($chatId){
+        $botName = config('services.telegram.username');
+        $this->sendMessage($chatId, "Инструкции по использованию « $botName » вы всегда можете найти на сайте.
+📢 Подписывайтесь на наш канал, чтобы быть в курсе обновлений.
+
+👥 Присоединяйтесь к нашему сообществу в чате $botName – там вы всегда сможете получить ответ на свой вопрос.");
     }
 }

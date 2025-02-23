@@ -34,4 +34,9 @@ class Column extends Model
         }
         Column::insert($columns);
     }
+
+    public function tasks(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Task::class, 'column_id', 'id');
+    }
 }
