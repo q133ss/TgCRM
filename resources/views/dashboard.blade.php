@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project Management</title>
+    <title>Управление проектами</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
@@ -94,6 +94,13 @@
                 overflow-x: scroll;
             }
         }
+
+        .add-task-form-btns{
+            margin-top: 4px;
+            display: grid;
+            grid-template-columns: 5fr 1fr;
+            grid-column-gap: 5px;
+        }
     </style>
 </head>
 <body>
@@ -127,13 +134,26 @@
             <div class="container mt-4">
                 <div class="column-container" id="column-container">
                     @foreach($project->columns as $column)
-                        <div class="column" draggable="true">
+                        <div class="column" id="column-{{$column->id}}" draggable="true">
                             <div class="column-title">{{$column->title}}</div>
                             <ul class="task-list" id="to-do">
                                 @foreach($column->tasks as $task)
                                     <li class="task-item" draggable="true">{{$task->title}}</li>
                                 @endforeach
                             </ul>
+
+                            <!-- Кнопка "Добавить задачу" -->
+                            <div class="add-task">
+                                <button class="btn btn-sm btn-outline-primary add-task-btn" id="add-task-btn-{{$column->id}}" onclick="toggleAddTask(this, '{{$column->id}}')">Добавить задачу</button>
+                                <div class="add-task-form d-none" id="add-task-form-{{$column->id}}">
+                                    <input type="text" class="form-control task-input" placeholder="Введите название задачи">
+                                    <div class="add-task-form-btns">
+                                        <button class="btn btn-sm btn-success" onclick="createTask(this, '{{$column->id}}')">Добавить</button>
+                                        <button class="btn btn-sm btn-danger" onclick="cancelAddTask(this, '{{$column->id}}')">X</button>
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
                     @endforeach
                 </div>
@@ -245,6 +265,68 @@
             modal.show();
         });
     });
+
+    // Функция для переключения формы добавления задачи
+    function toggleAddTask(button, column) {
+        document.querySelector('#add-task-btn-'+column).classList.toggle('d-none');
+        document.querySelector('#add-task-form-'+column).classList.toggle('d-none');
+    }
+
+    // Функция для создания задачи
+    function createTask(button, columnId) {
+        const input = button.parentElement.previousElementSibling;
+        const taskTitle = input.value.trim();
+
+        if (taskTitle !== '') {
+            // Очищаем поле ввода и скрываем форму
+            input.value = '';
+            document.querySelector('#add-task-btn-'+columnId).classList.toggle('d-none');
+            document.querySelector('#add-task-form-'+columnId).classList.toggle('d-none');
+            sendTaskToServer(taskTitle, columnId);
+        }
+    }
+
+    function sendTaskToServer(taskTitle, columnId) {
+        let route = @if(auth()->check())'/api/task'@else'/api/task?uid={{request()->uid}}'@endif;
+        fetch(route, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                //'X-CSRF-TOKEN': getCsrfToken(), // Получаем CSRF токен
+            },
+            body: JSON.stringify({
+                title: taskTitle,
+                column_id: columnId,
+                project_id: '{{$project->id}}'
+            }),
+        })
+            .then(response => {
+                return response.json();
+            })
+            .then(data => {
+                // Создаем новую задачу
+                const newTask = document.createElement('li');
+                newTask.className = 'task-item';
+                newTask.draggable = true;
+                newTask.textContent = taskTitle;
+
+                // Добавляем задачу в список
+                const taskList = document.querySelector('#column-'+columnId).querySelector('.task-list');
+                taskList.appendChild(newTask);
+            })
+            .catch(error => {
+                alert('Произошла ошибка. Пожалуйста, попробуйте позже.');
+            });
+    }
+
+    // Функция для отмены добавления задачи
+    function cancelAddTask(button, column) {
+        const input = button.parentElement.previousElementSibling;
+        input.value = ''; // Очищаем поле ввода
+        document.querySelector('#add-task-btn-'+column).classList.toggle('d-none');
+        document.querySelector('#add-task-form-'+column).classList.toggle('d-none');
+
+    }
 </script>
 
 </body>

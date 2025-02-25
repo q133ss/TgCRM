@@ -10,7 +10,12 @@ class ProjectController extends Controller
 {
     public function index(Request $request)
     {
-        $user = User::where('telegram_id', $request->uid)->firstOrFail();
+        if(isset($request->uid)){
+            $user = User::where('telegram_id', $request->uid)->firstOrFail();
+        }else{
+            $user = auth()->user();
+        }
+
         $projects = $user->projects;
         return view('dashboard', compact('projects', 'user'));
     }

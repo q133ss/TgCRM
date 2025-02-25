@@ -28,62 +28,66 @@ class TaskService
         $cleanText = $this->cleanTextFromDateTime($text, $parsedDate, $reminderTime);
 
         // Создаем задачу
-        $task = Task::create([
-            'title' => $cleanText,
-            'column_id' => $project->columns?->sortBy('order')->pluck('id')->first(),
-            'creator_id' => $user->id,
-            'date' => $parsedDate['date'] ?? null,
-            'time' => $parsedDate['time'] ?? null,
-        ]);
+        try {
+            $task = Task::create([
+                'title' => $cleanText,
+                'column_id' => $project->columns?->sortBy('order')->pluck('id')->first(),
+                'creator_id' => $user->id,
+                'date' => $parsedDate['date'] ?? null,
+                'time' => $parsedDate['time'] ?? null,
+            ]);
 
-        // Добавляем текущего пользователя как ответственного
-        DB::table('task_responsibles')->insert([
-            'task_id' => $task->id,
-            'user_id' => $user->id,
-        ]);
+            // Добавляем текущего пользователя как ответственного
+            DB::table('task_responsibles')->insert([
+                'task_id' => $task->id,
+                'user_id' => $user->id,
+            ]);
 
-        // Сохраняем файлы, если они есть
-        if (!empty($files)) {
-            foreach ($files as $file) {
-                $filePath = $this->saveFile($file);
-                File::create([
-                    'src' => $filePath,
-                    'fileable_id' => $task->id,
-                    'fileable_type' => Task::class,
-                ]);
+            // Сохраняем файлы, если они есть
+            if (!empty($files)) {
+                foreach ($files as $file) {
+                    $filePath = $this->saveFile($file);
+                    File::create([
+                        'src' => $filePath,
+                        'fileable_id' => $task->id,
+                        'fileable_type' => Task::class,
+                    ]);
+                }
             }
-        }
 
-        // Устанавливаем напоминание, если указано время
-        if ($reminderTime) {
-            $this->scheduleReminder($task, $reminderTime, $chatId);
-        }
+            // Устанавливаем напоминание, если указано время
+            if ($reminderTime) {
+                $this->scheduleReminder($task, $reminderTime, $chatId);
+            }
 
-        // Форматируем ответ для пользователя
-        if ($parsedDate['date']) {
-            $formattedDate = Carbon::createFromFormat('Y-m-d', $parsedDate['date'])->format('d.m.Y');
-            $cleanText .= ". Дата $formattedDate";
-        }
-        if ($parsedDate['time']) {
-            $cleanText .= " Время {$parsedDate['time']}";
-        }
+            // Форматируем ответ для пользователя
+            if ($parsedDate['date']) {
+                $formattedDate = Carbon::createFromFormat('Y-m-d', $parsedDate['date'])->format('d.m.Y');
+                $cleanText .= ". Дата $formattedDate";
+            }
+            if ($parsedDate['time']) {
+                $cleanText .= " Время {$parsedDate['time']}";
+            }
 
-        $keyboard = [
-            [
+            $keyboard = [
                 [
-                    'text' => 'Открыть',
-                    'web_app' => [
-                        'url' => config('app.url').'/project/'.$project->id.'?uid='.$user->telegram_id.'&task='.$task->id
+                    [
+                        'text' => 'Открыть',
+                        'web_app' => [
+                            'url' => config('app.url') . '/project/' . $project->id . '?uid=' . $user->telegram_id . '&task=' . $task->id
+                        ]
                     ]
                 ]
-            ]
-        ];
+            ];
 
-        // Отправляем подтверждение пользователю
-        (new TelegramService())->sendMessage($chatId, "Задача создана: $cleanText", $keyboard);
+            // Отправляем подтверждение пользователю
+            (new TelegramService())->sendMessage($chatId, "Задача создана: $cleanText", $keyboard);
+        }catch (\Exception $e){
+            (new TelegramService())->sendMessage($chatId, "Произошла ошибка, попробуйте еще раз!");
+        }
     }
 
-    private function parseDate($text): array
+    public function parseDate($text): array
     {
         $result = ['date' => null, 'time' => null];
 
@@ -132,7 +136,7 @@ class TaskService
         return $daysOfWeek[strtolower($dayName)] ?? Carbon::TODAY;
     }
 
-    private function parseReminderTime($text): ?int
+    public function parseReminderTime($text): ?int
     {
         if (preg_match('/:\s*(\d+)/', $text, $matches)) {
             return intval($matches[1]); // Возвращает количество минут
@@ -168,7 +172,7 @@ class TaskService
         return $localPath;
     }
 
-    private function scheduleReminder(Task $task, $minutesBefore, string $chatId)
+    public function scheduleReminder(Task $task, $minutesBefore, string $chatId)
     {
         if($task->time != null) {
             $reminderTime = now()->subMinutes($minutesBefore)->setTimeFromTimeString($task->time);
@@ -217,7 +221,7 @@ class TaskService
         return $project->first();
     }
 
-    private function cleanTextFromDateTime($text, $parsedDate, $reminderTime): string
+    public function cleanTextFromDateTime($text, $parsedDate, $reminderTime): string
     {
         // Удаляем дату из текста
         if ($parsedDate['date']) {

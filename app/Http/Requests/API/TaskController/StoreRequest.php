@@ -1,0 +1,60 @@
+<?php
+
+namespace App\Http\Requests\API\TaskController;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class StoreRequest extends FormRequest
+{
+    /**
+     * Determine if the user is authorized to make this request.
+     */
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Get the validation rules that apply to the request.
+     *
+     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     */
+    public function rules(): array
+    {
+        return [
+            'project_id' => 'required|exists:projects,id',
+            'column_id' => 'required|exists:columns,id',
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'date' => 'nullable|date_format:Y-m-d',
+            'time' => 'nullable|date_format:H:i',
+            'files' => 'nullable|array',
+            'files.*' => 'required|file|size:10240',
+            'reminder' => 'nullable|date_format:H:i',
+            'responsible' => 'nullable|array',
+            'responsible.*' => 'required|string' // Вдруг юзера нет в системе, можно будет передать ник
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'project_id.required' => 'Ошибка',
+            'project_id.exists' => 'Ошибка',
+            'column_id.exists' => 'Ошибка',
+            'column_id.required' => 'Ошибка',
+            'title.required' => 'Укажите название',
+            'title.string' => 'Название должно быть строкой',
+            'title.max' => 'Название не должно превышать 255 символов',
+            'description.string' => 'Описание должно быть строкой',
+            'date.date_format' => 'Неверный формат даты',
+            'time.date_format' => 'Неверный формат времени',
+            'files.array' => 'Загружаемые файлы должны быть массивом.',
+            'files.*.required' => 'Каждый файл является обязательным для загрузки.',
+            'files.*.file' => 'Загружаемый элемент должен быть файлом.',
+            'files.*.size' => 'Размер каждого файла не должен превышать 10 МБ.',
+            'reminder.date_format' => 'Неверный формат напоминания',
+            'responsible.array' => 'Ответственные должны быть массивом'
+        ];
+    }
+}
