@@ -29,7 +29,7 @@ class StoreRequest extends FormRequest
             'date' => 'nullable|date_format:Y-m-d',
             'time' => 'nullable|date_format:H:i',
             'files' => 'nullable|array',
-            'files.*' => 'required|file|size:10240',
+            'files.*' => 'required|file|max:50240',
             'reminder' => 'nullable|date_format:H:i',
             'responsible' => 'nullable|array',
             'responsible.*' => 'required|exists:users,id'
@@ -52,7 +52,7 @@ class StoreRequest extends FormRequest
             'files.array' => 'Загружаемые файлы должны быть массивом.',
             'files.*.required' => 'Каждый файл является обязательным для загрузки.',
             'files.*.file' => 'Загружаемый элемент должен быть файлом.',
-            'files.*.size' => 'Размер каждого файла не должен превышать 10 МБ.',
+            'files.*.max' => 'Размер каждого файла не должен превышать 50 МБ.',
             'reminder.date_format' => 'Неверный формат напоминания',
             'responsible.array' => 'Ответственные должны быть массивом',
             'responsible.*.exists' => 'Указанный ответственный не существует'

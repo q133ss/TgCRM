@@ -77,7 +77,6 @@ class TaskController extends Controller
     public function update(StoreRequest $request, string $id)
     {
         $data = $request->validated();
-
         $text = $data['title'];
         $reminder = $data['reminder'] ?? null;
         $project = Project::findOrFail($data['project_id']);
@@ -86,6 +85,7 @@ class TaskController extends Controller
         unset($data['responsible']);
         unset($data['reminder']);
         unset($data['project_id']);
+        unset($data['files']);
 
         $taskService = new TaskService();
         $parsedDate = $taskService->parseDate($text);
@@ -127,14 +127,14 @@ class TaskController extends Controller
                 ]);
 
                 foreach ($oldFiles->get() as $oldFile) {
-                    if ($oldFile->src && Storage::disk('public')->exists(ltrim($oldFile->src, '/'))) {
-                        Storage::disk('public')->delete(ltrim($oldFile->src, '/'));
+                    if ($oldFile->src && Storage::disk('public')->exists(str_replace('/storage/', '',$oldFile->src))) {
+                        Storage::disk('public')->delete(str_replace('/storage/', '',$oldFile->src));
                     }
                 }
 
                 $oldFiles->delete();
 
-                foreach ($request->files as $file) {
+                foreach ($request->file('files') as $file) {
                     $filePath = '/storage/'.$file->store('files', 'public');
                     File::create([
                         'src' => $filePath,

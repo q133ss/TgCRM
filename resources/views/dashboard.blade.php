@@ -138,7 +138,7 @@
                             <div class="column-title">{{$column->title}}</div>
                             <ul class="task-list" id="to-do">
                                 @foreach($column->tasks as $task)
-                                    <li class="task-item" id="task-item-{{$task->id}}" onclick="showTask('{{$task->id}}')" data-task-id="{{$task->id}}" draggable="true">{{$task->title}}</li>
+                                    <li class="task-item" id="task-item-{{$task->id}}" onclick="showTask('{{$task->id}}', '{{$column->id}}')" data-task-id="{{$task->id}}" draggable="true">{{$task->title}}</li>
                                 @endforeach
                             </ul>
 
@@ -183,7 +183,6 @@
                     <div class="mb-3">
                         <label for="taskAssignees" class="form-label">Ответственные</label>
                         <select name="responsible" class="form-select" multiple id="taskAssignees">
-                            <option value="1">@username</option>
                         </select>
                     </div>
                     <div class="mb-3">
@@ -196,8 +195,10 @@
                         <input type="time" class="form-control" id="taskTime" placeholder="12:00">
                     </div>
 
+                    <div id="taskFileList" class="d-flex flex-wrap gap-2 mb-3"></div>
+
                     <div class="mb-3">
-                        <label for="taskFiles" class="form-label">Время</label>
+                        <label for="taskFiles" class="form-label">Файлы</label>
                         <input type="file" class="form-control" id="taskFiles" multiple>
                     </div>
 
@@ -209,7 +210,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-danger" id="deleteBtn">Удалить</button>
-                <button type="button" class="btn btn-primary">Сохранить изменения</button>
+                <button type="button" class="btn btn-primary" id="saveBtn">Сохранить изменения</button>
             </div>
         </div>
     </div>
@@ -217,6 +218,7 @@
 
 <!-- Bootstrap JS and Popper.js -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
 <script>
     // Drag and Drop functionality
     let draggedItem = null;
@@ -323,14 +325,8 @@
 
     // Function to send AJAX request to update task's column_id
     function updateTaskColumn(taskId, newColumnId, text) {
-        let route = '';
-        @if(auth()->check())
-        route = '/api/task/'+taskId;
-        @else
-        route = '/api/task/'+taskId+'?uid={{request()->uid}}'
-        @endif
-        fetch(route, {
-            method: 'PATCH',
+        fetch('/update/api/task/'+taskId+'?uid={{request()->uid}}', {
+            method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
@@ -356,8 +352,12 @@
     }
 
     // Open modal on task click
-    function showTask(taskId) {
+    let currentColumnId = '';
+
+    function showTask(taskId, columnId) {
+        currentColumnId = columnId;
         document.querySelector('#deleteBtn').setAttribute('onclick', 'deleteTask('+taskId+')')
+        document.querySelector('#saveBtn').setAttribute('onclick', 'saveTask('+taskId+')')
         document.querySelector('#exampleModalLabel').textContent = '';
         document.querySelector('#taskTitle').value = '';
         document.querySelector('#taskDescription').value = '';
@@ -424,8 +424,7 @@
     }
 
     function sendTaskToServer(taskTitle, columnId) {
-        let route = @if(auth()->check())'/api/task'@else'/api/task?uid={{request()->uid}}'@endif;
-        fetch(route, {
+        fetch('/api/task?uid={{request()->uid}}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -490,6 +489,56 @@
                 alert('Произошла ошибка. Пожалуйста, попробуйте позже.');
             });
         }
+    }
+
+    function saveTask(taskId){
+        const projectId = 1; // Замените на реальный ID проекта
+        const columnId = 1; // Замените на реальный ID колонки
+        const taskTitle = document.getElementById('taskTitle').value;
+        const taskDescription = document.getElementById('taskDescription').value;
+        const taskAssignees = Array.from(document.getElementById('taskAssignees').selectedOptions).map(option => option.value);
+        const taskDate = document.getElementById('taskDate').value;
+        const taskTime = document.getElementById('taskTime').value;
+        const taskFiles = document.getElementById('taskFiles').files;
+        const taskReminder = document.getElementById('taskReminder').value;
+
+        // Создаем объект FormData для отправки данных
+        const formData = new FormData();
+        formData.append('project_id', projectId);
+        formData.append('column_id', columnId);
+        formData.append('title', taskTitle);
+        formData.append('description', taskDescription);
+        formData.append('date', taskDate);
+        formData.append('time', taskTime);
+        formData.append('reminder', taskReminder);
+
+        // Добавляем ответственных (responsible)
+        taskAssignees.forEach((assignee, index) => {
+            formData.append(`responsible[${index}]`, assignee);
+        });
+
+        // Добавляем файлы (files)
+        for (let i = 0; i < taskFiles.length; i++) {
+            formData.append('files[]', taskFiles[i]);
+        }
+
+        // Отправка данных через AJAX
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `/api/update/task/${taskId}?uid={{$user->telegram_id}}`, true);
+
+        xhr.onload = function() {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                console.log('Задача успешно обновлена:', xhr.responseText);
+            } else {
+                console.error('Ошибка при обновлении задачи:', xhr.statusText);
+            }
+        };
+
+        xhr.onerror = function() {
+            console.error('Ошибка сети при отправке запроса');
+        };
+
+        xhr.send(formData);
     }
 </script>
 
