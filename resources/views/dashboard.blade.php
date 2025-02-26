@@ -213,8 +213,46 @@
                 draggedItem.style.display = 'block';
                 draggedItem = null;
             }
+
+            // Если была перемещена колонка, отправляем AJAX-запрос
+            if (event.target.classList.contains('column')) {
+                updateColumnOrder();
+            }
         }, 0);
     });
+
+    function updateColumnOrder(){
+        const columnContainer = document.getElementById('column-container');
+        const columns = Array.from(columnContainer.children).filter(col => col.classList.contains('column'));
+
+        // Extract column IDs in the new order
+        const columnOrder = columns.map(column => column.dataset.columnId);
+
+        // Send AJAX request to update column order on the server
+        fetch('/api/column-order/{{$project->id}}?uid={{request()->uid}}', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                order: columnOrder,
+            }),
+        })
+            .then(response => {
+                console.log(response)
+                if (!response.ok) {
+                    throw new Error('Не удалось обновить порядок колонок.');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Порядок колонок успешно обновлен:', data);
+            })
+            .catch(error => {
+                console.error('Ошибка при обновлении порядка колонок:', error);
+                alert('Произошла ошибка при обновлении порядка колонок. Пожалуйста, попробуйте позже.');
+            });
+    }
 
     document.addEventListener('dragover', function (event) {
         event.preventDefault();

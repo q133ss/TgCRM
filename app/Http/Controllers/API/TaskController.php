@@ -4,12 +4,12 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\API\TaskController\StoreRequest;
+use App\Models\Column;
 use App\Models\File;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\TaskService;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -155,5 +155,21 @@ class TaskController extends Controller
         }catch (\Exception $exception){
             return response()->json(['message' => 'Попробуйте еще раз'], 500);
         }
+    }
+    public function columnSort(Request $request, string $project_id): \Illuminate\Http\JsonResponse
+    {
+        # todo тут надо добавить проверку на проект и доступы!
+        $validated = $request->validate([
+            'order' => 'required|array',
+            'order.*' => 'exists:columns,id',
+        ]);
+
+        $order = $validated['order'];
+
+        foreach ($order as $index => $columnId) {
+            Column::where('id', $columnId)->update(['order' => $index + 1]);
+        }
+
+        return response()->json(['message' => 'Порядок колонок успешно обновлен'], 200);
     }
 }
