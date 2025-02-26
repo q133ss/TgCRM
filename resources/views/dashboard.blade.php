@@ -138,7 +138,7 @@
                             <div class="column-title">{{$column->title}}</div>
                             <ul class="task-list" id="to-do">
                                 @foreach($column->tasks as $task)
-                                    <li class="task-item" data-task-id="{{$task->id}}" draggable="true">{{$task->title}}</li>
+                                    <li class="task-item" id="task-item-{{$task->id}}" onclick="showTask('{{$task->id}}')" data-task-id="{{$task->id}}" draggable="true">{{$task->title}}</li>
                                 @endforeach
                             </ul>
 
@@ -167,7 +167,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="exampleModalLabel">Купить хлеб</h5>
+                <h5 class="modal-title" id="exampleModalLabel"></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -181,13 +181,34 @@
                         <textarea class="form-control" id="taskDescription" rows="3"></textarea>
                     </div>
                     <div class="mb-3">
-                        <label for="taskAssignees" class="form-label">Ответственные (username через запятую)</label>
-                        <textarea class="form-control" placeholder="@username1, @username2, @username3" id="taskAssignees" rows="3"></textarea>
+                        <label for="taskAssignees" class="form-label">Ответственные</label>
+                        <select name="responsible" class="form-select" multiple id="taskAssignees">
+                            <option value="1">@username</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="taskDate" class="form-label">Дата</label>
+                        <input type="date" class="form-control" id="taskDate" placeholder="2025-02-12">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="taskTime" class="form-label">Время</label>
+                        <input type="time" class="form-control" id="taskTime" placeholder="12:00">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="taskFiles" class="form-label">Время</label>
+                        <input type="file" class="form-control" id="taskFiles" multiple>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="taskReminder" class="form-label">Напомнить о задаче (За сколько времени до начала задачи)</label>
+                        <input type="time" id="taskReminder" name="reminder" class="form-control">
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                <button type="button" class="btn btn-danger" id="deleteBtn">Удалить</button>
                 <button type="button" class="btn btn-primary">Сохранить изменения</button>
             </div>
         </div>
@@ -335,12 +356,52 @@
     }
 
     // Open modal on task click
-    document.querySelectorAll('.task-item').forEach(task => {
-        task.addEventListener('click', () => {
-            const modal = new bootstrap.Modal(document.getElementById('taskModal'));
-            modal.show();
-        });
-    });
+    function showTask(taskId) {
+        document.querySelector('#deleteBtn').setAttribute('onclick', 'deleteTask('+taskId+')')
+        document.querySelector('#exampleModalLabel').textContent = '';
+        document.querySelector('#taskTitle').value = '';
+        document.querySelector('#taskDescription').value = '';
+        document.querySelector('#taskAssignees').value = '';
+        document.getElementById('taskAssignees').innerHTML = '';
+        document.querySelector('#taskDate').value = '';
+        document.querySelector('#taskTime').value = '';
+        document.querySelector('#taskReminder').value = '';
+
+        fetch('/api/task/' + taskId + '?uid={{$user->telegram_id}}', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+            .then(response => {
+                return response.json();
+            })
+            .then(data => {
+                document.querySelector('#exampleModalLabel').textContent = data.title;
+                document.querySelector('#taskTitle').value = data.title;
+                document.querySelector('#taskDescription').value = data.description;
+                document.querySelector('#taskAssignees').value = data.description;
+                document.querySelector('#taskDate').value = data.date;
+                document.querySelector('#taskTime').value = data.time;
+                // document.querySelector('#taskFiles').value = data.files; // выводим их в виде квадратов с крестиком вверху
+                document.querySelector('#taskReminder').value = data.reminder;
+
+                data.responsible.forEach(assignee => {
+                    const option = document.createElement('option');
+                    option.value = assignee.id; // Значение опции - ID пользователя
+                    option.textContent = `@${assignee.username} | (${assignee.first_name} ${assignee.last_name})`; // Отображаемое имя
+                    document.getElementById('taskAssignees').appendChild(option);
+                });
+                //  в select!
+
+                const modal = new bootstrap.Modal(document.getElementById('taskModal'));
+                modal.show();
+            })
+            .catch(error => {
+                console.log(error)
+                alert('Произошла ошибка. Пожалуйста, попробуйте позже.');
+            });
+    }
 
     // Функция для переключения формы добавления задачи
     function toggleAddTask(button, column) {
@@ -368,7 +429,6 @@
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                //'X-CSRF-TOKEN': getCsrfToken(), // Получаем CSRF токен
             },
             body: JSON.stringify({
                 title: taskTitle,
@@ -387,6 +447,8 @@
                 newTask.textContent = taskTitle;
 
                 newTask.setAttribute('data-task-id', data.task.id);
+                newTask.setAttribute('id', 'task-item-'+data.task.id);
+                newTask.setAttribute('onclick', 'showTask('+data.task.id+')');
 
                 // Добавляем задачу в список
                 const taskList = document.querySelector('#column-'+columnId).querySelector('.task-list');
@@ -403,7 +465,31 @@
         input.value = ''; // Очищаем поле ввода
         document.querySelector('#add-task-btn-'+column).classList.toggle('d-none');
         document.querySelector('#add-task-form-'+column).classList.toggle('d-none');
+    }
 
+    function deleteTask(id){
+        let conf = confirm('Вы уверенны, что хотите удалить задачу?')
+        if(conf){
+            fetch('/api/task/'+id+'?uid={{$user->telegram_id}}', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => {
+                return response.json();
+            })
+            .then(data => {
+                document.querySelector('#task-item-'+id).remove()
+                const modal = bootstrap.Modal.getInstance(document.getElementById('taskModal'));
+                if (modal) {
+                    modal.hide();
+                }
+            })
+            .catch(error => {
+                alert('Произошла ошибка. Пожалуйста, попробуйте позже.');
+            });
+        }
     }
 </script>
 

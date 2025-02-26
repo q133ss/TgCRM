@@ -32,7 +32,7 @@ class StoreRequest extends FormRequest
             'files.*' => 'required|file|size:10240',
             'reminder' => 'nullable|date_format:H:i',
             'responsible' => 'nullable|array',
-            'responsible.*' => 'required|string' // Вдруг юзера нет в системе, можно будет передать ник
+            'responsible.*' => 'required|exists:users,id'
         ];
     }
 
@@ -54,7 +54,8 @@ class StoreRequest extends FormRequest
             'files.*.file' => 'Загружаемый элемент должен быть файлом.',
             'files.*.size' => 'Размер каждого файла не должен превышать 10 МБ.',
             'reminder.date_format' => 'Неверный формат напоминания',
-            'responsible.array' => 'Ответственные должны быть массивом'
+            'responsible.array' => 'Ответственные должны быть массивом',
+            'responsible.*.exists' => 'Указанный ответственный не существует'
         ];
     }
 }

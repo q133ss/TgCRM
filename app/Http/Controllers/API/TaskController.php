@@ -172,4 +172,14 @@ class TaskController extends Controller
 
         return response()->json(['message' => 'Порядок колонок успешно обновлен'], 200);
     }
+
+    public function show(string $id)
+    {
+        return Task::findOrFail($id);
+    }
+
+    public function delete(string $id)
+    {
+        return Task::findOrFail($id)->delete();
+    }
 }
