@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Task extends Model
 {
     protected $guarded = [];
-    protected $with = ['responsible'];
+    protected $with = ['responsible', 'files'];
 
     public function column(): \Illuminate\Database\Eloquent\Relations\HasOne
     {

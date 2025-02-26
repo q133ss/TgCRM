@@ -86,6 +86,7 @@ class TaskController extends Controller
         unset($data['reminder']);
         unset($data['project_id']);
         unset($data['files']);
+        unset($data['old_files']);
 
         $taskService = new TaskService();
         $parsedDate = $taskService->parseDate($text);
@@ -119,12 +120,12 @@ class TaskController extends Controller
             }
 
             // Сохраняем файлы, если они есть
-            if ($request->has('files')) {
+            if ($request->has('files') || $request->has('old_files')) {
                 // Шаг 1: Получаем старые файлы для задачи
                 $oldFiles = File::where([
                     'fileable_id' => $task->id,
                     'fileable_type' => Task::class,
-                ]);
+                ])->whereNotIn('id', $request->old_files);
 
                 foreach ($oldFiles->get() as $oldFile) {
                     if ($oldFile->src && Storage::disk('public')->exists(str_replace('/storage/', '',$oldFile->src))) {
@@ -134,13 +135,15 @@ class TaskController extends Controller
 
                 $oldFiles->delete();
 
-                foreach ($request->file('files') as $file) {
-                    $filePath = '/storage/'.$file->store('files', 'public');
-                    File::create([
-                        'src' => $filePath,
-                        'fileable_id' => $task->id,
-                        'fileable_type' => Task::class,
-                    ]);
+                if($request->has('files')) {
+                    foreach ($request->file('files') as $file) {
+                        $filePath = '/storage/' . $file->store('files', 'public');
+                        File::create([
+                            'src' => $filePath,
+                            'fileable_id' => $task->id,
+                            'fileable_type' => Task::class,
+                        ]);
+                    }
                 }
             }
 

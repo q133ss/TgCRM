@@ -28,6 +28,7 @@ class StoreRequest extends FormRequest
             'description' => 'nullable|string',
             'date' => 'nullable|date_format:Y-m-d',
             'time' => 'nullable|date_format:H:i',
+            'old_files' => 'nullable|array',
             'files' => 'nullable|array',
             'files.*' => 'required|file|max:50240',
             'reminder' => 'nullable|date_format:H:i',

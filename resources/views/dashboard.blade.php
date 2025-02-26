@@ -354,6 +354,79 @@
     // Open modal on task click
     let currentColumnId = '';
 
+    let oldFiles = []; // Массив для хранения старых файлов
+    let newFiles = []; // Массив для хранения новых файлов
+
+    // Функция для отображения файлов
+    function renderFiles() {
+        const fileListContainer = document.querySelector('#taskFileList');
+        fileListContainer.innerHTML = ''; // Очищаем контейнер
+
+        // Отображаем старые файлы
+        oldFiles.forEach((file, index) => {
+            const fileItem = createFileItem(file, index, true);
+            fileListContainer.appendChild(fileItem);
+        });
+
+        // Отображаем новые файлы
+        newFiles.forEach((file, index) => {
+            const fileItem = createFileItem(file, index, false);
+            fileListContainer.appendChild(fileItem);
+        });
+    }
+
+    // Функция для создания элемента файла
+    function createFileItem(file, index, isOldFile) {
+        const fileItem = document.createElement('div');
+        fileItem.className = 'position-relative d-inline-block';
+        fileItem.style.width = '100px';
+        fileItem.style.height = '100px';
+        fileItem.style.background = '#f8f9fa';
+        fileItem.style.border = '1px solid #dee2e6';
+        fileItem.style.borderRadius = '5px';
+        fileItem.style.overflow = 'hidden';
+
+        // Крестик для удаления файла
+        const removeButton = document.createElement('button');
+        removeButton.className = 'position-absolute top-0 end-0 btn btn-danger btn-sm';
+        removeButton.innerHTML = '&times;';
+        removeButton.style.padding = '0.1rem 0.3rem';
+        removeButton.style.fontSize = '0.8rem';
+        removeButton.addEventListener('click', () => {
+            if (isOldFile) {
+                oldFiles.splice(index, 1); // Удаляем старый файл
+            } else {
+                newFiles.splice(index, 1); // Удаляем новый файл
+            }
+            renderFiles(); // Перерисовываем список
+        });
+
+        // Иконка или миниатюра файла
+        const fileIcon = document.createElement('div');
+        fileIcon.className = 'd-flex justify-content-center align-items-center h-100';
+        if (file.src && file.src.match(/\.(jpeg|jpg|png|gif)$/i)) {
+            const img = document.createElement('img');
+            img.src = file.src; // Используем URL из старого файла
+            img.style.maxWidth = '100%';
+            img.style.maxHeight = '100%';
+            fileIcon.appendChild(img);
+        } else {
+            fileIcon.innerHTML = `<i class="bi bi-file-earmark"></i>`;
+        }
+
+        // Добавляем элементы в контейнер
+        fileItem.appendChild(removeButton);
+        fileItem.appendChild(fileIcon);
+        return fileItem;
+    }
+
+    // Обработчик изменения файлового input
+    document.querySelector('#taskFiles').addEventListener('change', function () {
+        const files = Array.from(this.files); // Получаем новые файлы
+        newFiles.push(...files); // Добавляем их в массив новых файлов
+        renderFiles(); // Отображаем все файлы
+    });
+
     function showTask(taskId, columnId) {
         currentColumnId = columnId;
         document.querySelector('#deleteBtn').setAttribute('onclick', 'deleteTask('+taskId+')')
@@ -366,6 +439,10 @@
         document.querySelector('#taskDate').value = '';
         document.querySelector('#taskTime').value = '';
         document.querySelector('#taskReminder').value = '';
+
+        oldFiles = []; // Очищаем старые файлы
+        newFiles = []; // Очищаем новые файлы
+        renderFiles(); // Очищаем список файлов
 
         fetch('/api/task/' + taskId + '?uid={{$user->telegram_id}}', {
             method: 'GET',
@@ -385,6 +462,16 @@
                 document.querySelector('#taskTime').value = data.time;
                 // document.querySelector('#taskFiles').value = data.files; // выводим их в виде квадратов с крестиком вверху
                 document.querySelector('#taskReminder').value = data.reminder;
+
+                // Загружаем старые файлы
+                if (data.files && data.files.length > 0) {
+                    oldFiles = data.files.map(file => ({
+                        id: file.id, // ID файла
+                        src: file.src, // Путь к файлу
+                        name: file.src.split('/').pop() // Имя файла
+                    }));
+                    renderFiles(); // Отображаем старые файлы
+                }
 
                 data.responsible.forEach(assignee => {
                     const option = document.createElement('option');
@@ -499,7 +586,6 @@
         const taskAssignees = Array.from(document.getElementById('taskAssignees').selectedOptions).map(option => option.value);
         const taskDate = document.getElementById('taskDate').value;
         const taskTime = document.getElementById('taskTime').value;
-        const taskFiles = document.getElementById('taskFiles').files;
         const taskReminder = document.getElementById('taskReminder').value;
 
         // Создаем объект FormData для отправки данных
@@ -517,10 +603,15 @@
             formData.append(`responsible[${index}]`, assignee);
         });
 
-        // Добавляем файлы (files)
-        for (let i = 0; i < taskFiles.length; i++) {
-            formData.append('files[]', taskFiles[i]);
-        }
+        // Добавляем старые файлы (если они не были удалены)
+        oldFiles.forEach((file, index) => {
+            formData.append(`old_files[${index}]`, file.id); // Отправляем ID старых файлов
+        });
+
+        // Добавляем новые файлы
+        newFiles.forEach((file, index) => {
+            formData.append('files[]', file);
+        });
 
         // Отправка данных через AJAX
         const xhr = new XMLHttpRequest();
