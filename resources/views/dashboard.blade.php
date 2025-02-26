@@ -86,12 +86,21 @@
             gap: 10px;
         }
 
+        #mobileSelect{
+            display: none;
+        }
+
         @media screen and (max-width: 768px) {
             .sidebar{
-                height: 100%;
+                display: none;
             }
-            .column-container{
-                overflow-x: scroll;
+
+            .column{
+                display: none;
+            }
+
+            #mobileSelect{
+                display: block;
             }
         }
 
@@ -132,8 +141,24 @@
                 }
             @endphp
             <div class="container mt-4">
+                <div class="mb-3" id="mobileSelect">
+                    <label for="columnSelect" class="form-label">Колонка</label>
+                    <select name="responsible" class="form-select" id="columnSelect">
+                        @foreach($project->columns as $column)
+                            <option value="{{$column->id}}">{{$column->title}}</option>
+                        @endforeach
+                    </select>
+                </div>
+
                 <div class="column-container" id="column-container">
                     @foreach($project->columns as $column)
+                        @if ($loop->first)
+                            <style>
+                                #column-{{$column->id}}{
+                                    display: block;
+                                }
+                            </style>
+                        @endif
                         <div class="column" id="column-{{$column->id}}" data-column-id="{{$column->id}}" draggable="true">
                             <div class="column-title">{{$column->title}}</div>
                             <ul class="task-list" id="to-do">
@@ -423,8 +448,21 @@
     // Обработчик изменения файлового input
     document.querySelector('#taskFiles').addEventListener('change', function () {
         const files = Array.from(this.files); // Получаем новые файлы
-        newFiles.push(...files); // Добавляем их в массив новых файлов
+        files.forEach(file => {
+            // Создаем временный URL для отображения превью
+            file.preview = URL.createObjectURL(file);
+            newFiles.push(file); // Добавляем файл в массив новых файлов
+        });
         renderFiles(); // Отображаем все файлы
+    });
+
+    // Колонка для мобильных устройств
+    document.querySelector('#columnSelect').addEventListener('change', function () {
+        document.querySelectorAll('.column').forEach((item) => {
+            item.classList.add('d-none');
+        });
+        document.querySelector('#column-'+this.value).classList.remove('d-none');
+        document.querySelector('#column-'+this.value).style.display = 'block';
     });
 
     function showTask(taskId, columnId) {
@@ -631,6 +669,54 @@
 
         xhr.send(formData);
     }
+
+    // Для задачи из ТГ
+    @if(request()->has('task'))
+    fetch('/api/task/' + {{request()->task}} + '?uid={{$user->telegram_id}}', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+        .then(response => {
+            return response.json();
+        })
+        .then(data => {
+            document.querySelector('#exampleModalLabel').textContent = data.title;
+            document.querySelector('#taskTitle').value = data.title;
+            document.querySelector('#taskDescription').value = data.description;
+            document.querySelector('#taskAssignees').value = data.description;
+            document.querySelector('#taskDate').value = data.date;
+            document.querySelector('#taskTime').value = data.time;
+            // document.querySelector('#taskFiles').value = data.files; // выводим их в виде квадратов с крестиком вверху
+            document.querySelector('#taskReminder').value = data.reminder;
+
+            // Загружаем старые файлы
+            if (data.files && data.files.length > 0) {
+                oldFiles = data.files.map(file => ({
+                    id: file.id, // ID файла
+                    src: file.src, // Путь к файлу
+                    name: file.src.split('/').pop() // Имя файла
+                }));
+                renderFiles(); // Отображаем старые файлы
+            }
+
+            data.responsible.forEach(assignee => {
+                const option = document.createElement('option');
+                option.value = assignee.id; // Значение опции - ID пользователя
+                option.textContent = `@${assignee.username} | (${assignee.first_name} ${assignee.last_name})`; // Отображаемое имя
+                document.getElementById('taskAssignees').appendChild(option);
+            });
+            //  в select!
+
+            const modal = new bootstrap.Modal(document.getElementById('taskModal'));
+            modal.show();
+        })
+        .catch(error => {
+            console.log(error)
+            alert('Произошла ошибка. Пожалуйста, попробуйте позже.');
+        });
+    @endif
 </script>
 
 </body>
