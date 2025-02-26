@@ -95,11 +95,11 @@ class TaskController extends Controller
         $data['title'] = $cleanText;
 
         // Устанавливаем дату и время
-        if($data['date'] == null && $parsedDate['date'] != null){
+        if(isset($data['date']) && $parsedDate['date'] != null){
             $data['date'] = $parsedDate['date'];
         }
 
-        if($data['time'] == null && $parsedDate['time'] != null){
+        if(isset($data['time']) && $parsedDate['time'] != null){
             $data['time'] = $parsedDate['time'];
         }
 

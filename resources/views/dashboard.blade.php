@@ -134,11 +134,11 @@
             <div class="container mt-4">
                 <div class="column-container" id="column-container">
                     @foreach($project->columns as $column)
-                        <div class="column" id="column-{{$column->id}}" draggable="true">
+                        <div class="column" id="column-{{$column->id}}" data-column-id="{{$column->id}}" draggable="true">
                             <div class="column-title">{{$column->title}}</div>
                             <ul class="task-list" id="to-do">
                                 @foreach($column->tasks as $task)
-                                    <li class="task-item" draggable="true">{{$task->title}}</li>
+                                    <li class="task-item" data-task-id="{{$task->id}}" draggable="true">{{$task->title}}</li>
                                 @endforeach
                             </ul>
 
@@ -231,11 +231,8 @@
         if (draggedItem.classList.contains('column')) {
             // Ensure columns are only placed as siblings, not inside each other
             if (dropzone.classList.contains('column') && dropzone !== draggedItem) {
-                // Find the parent container of the dropzone
                 const columnContainer = document.getElementById('column-container');
                 const dropIndex = Array.from(columnContainer.children).indexOf(dropzone);
-
-                // Insert the dragged column before the dropzone or append it at the end
                 if (dropIndex !== -1) {
                     columnContainer.insertBefore(draggedItem, columnContainer.children[dropIndex]);
                 } else {
@@ -245,18 +242,59 @@
         } else if (draggedItem.classList.contains('task-item')) {
             // Ensure tasks are only placed inside task lists
             let taskList = dropzone.closest('.task-list');
-
-            // If the dropzone is a column but not a task-list, find its task-list
             if (!taskList && dropzone.classList.contains('column')) {
                 taskList = dropzone.querySelector('.task-list');
             }
-
             if (taskList) {
                 // Append the task to the task list
                 taskList.appendChild(draggedItem);
+
+                // Get the new column ID
+                const newColumnId = taskList.closest('.column').dataset.columnId;
+
+                // Get the task ID
+                const taskId = draggedItem.dataset.taskId;
+                const text = draggedItem.textContent;
+
+                // Send AJAX request to update column_id for the task
+                updateTaskColumn(taskId, newColumnId, text);
             }
         }
     });
+
+    // Function to send AJAX request to update task's column_id
+    function updateTaskColumn(taskId, newColumnId, text) {
+        let route = '';
+        @if(auth()->check())
+        route = '/api/task/'+taskId;
+        @else
+        route = '/api/task/'+taskId+'?uid={{request()->uid}}'
+        @endif
+        fetch(route, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                column_id: newColumnId,
+                project_id: '{{$project->id}}',
+                title: text
+            }),
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Не удалось обновить задачу.');
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Задача успешно обновлена:', data);
+        })
+        .catch(error => {
+            console.error('Ошибка при обновлении задачи:', error);
+            alert('Произошла ошибка при обновлении задачи. Пожалуйста, попробуйте позже.');
+        });
+    }
 
     // Open modal on task click
     document.querySelectorAll('.task-item').forEach(task => {
@@ -309,6 +347,8 @@
                 newTask.className = 'task-item';
                 newTask.draggable = true;
                 newTask.textContent = taskTitle;
+
+                newTask.setAttribute('data-task-id', data.task.id);
 
                 // Добавляем задачу в список
                 const taskList = document.querySelector('#column-'+columnId).querySelector('.task-list');

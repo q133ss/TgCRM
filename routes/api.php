@@ -10,3 +10,4 @@ Route::get('/user', function (Request $request) {
 Route::post('/telegram/webhook', [\App\Http\Controllers\TelegramController::class, 'handle']);
 
 Route::post('/task', [\App\Http\Controllers\API\TaskController::class, 'store']);
+Route::patch('/task/{id}', [\App\Http\Controllers\API\TaskController::class, 'update']);
