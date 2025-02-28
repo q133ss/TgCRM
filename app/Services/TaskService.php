@@ -269,4 +269,55 @@ class TaskService
 
         return $groupedTasks;
     }
+
+    public function make(string $chatId, string $text, User $user, Project $project, array $files = [], array $responsibles = [])
+    {
+        // Извлекаем дату и время из текста
+        $parsedDate = $this->parseDate($text);
+        $reminderTime = $this->parseReminderTime($text);
+        $cleanText = $this->cleanTextFromDateTime($text, $parsedDate, $reminderTime);
+
+        // Создаем задачу
+        try {
+            $task = Task::create([
+                'title' => $cleanText,
+                'column_id' => $project->columns?->sortBy('order')->pluck('id')->first(),
+                'creator_id' => $user->id,
+                'date' => $parsedDate['date'] ?? null,
+                'time' => $parsedDate['time'] ?? null,
+            ]);
+
+            // Добавляем текущего пользователя как ответственного
+            DB::table('task_responsibles')->insert([
+                'task_id' => $task->id,
+                'user_id' => $user->id,
+            ]);
+
+            foreach ($responsibles as $responsible){
+                DB::table('task_responsibles')->insert([
+                    'task_id' => $task->id,
+                    'user_id' => $responsible
+                ]);
+            }
+
+            // Сохраняем файлы, если они есть
+            if (!empty($files)) {
+                foreach ($files as $file) {
+                    $filePath = $this->saveFile($file);
+                    File::create([
+                        'src' => $filePath,
+                        'fileable_id' => $task->id,
+                        'fileable_type' => Task::class,
+                    ]);
+                }
+            }
+
+            // Устанавливаем напоминание, если указано время
+            if ($reminderTime) {
+                $this->scheduleReminder($task, $reminderTime, $chatId);
+            }
+        }catch (\Exception $e){
+            (new TelegramService())->sendMessage($chatId, "Произошла ошибка, попробуйте еще раз!");
+        }
+    }
 }

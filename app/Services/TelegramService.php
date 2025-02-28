@@ -98,7 +98,17 @@ class TelegramService
                 $this->createTaskFromGroupWithFiles($chatId, $text, $document ?? $photo);
             } elseif ($text) {
                 // Обработка текстовых сообщений с упоминанием бота
-                $this->createTaskFromGroup($chatId, $text, $mentionedUsers);
+                $this->createTaskFromGroup($chatId, $text, $mentionedUsers, $user, $project);
+            }
+        }
+
+        // Приветственное сообщение при добавлении бота в группу
+        if ($isGroupChat && isset($message['new_chat_members'])) {
+            foreach ($message['new_chat_members'] as $member) {
+                if ($member['id'] == config('services.telegram.id')) { // Проверяем, что добавлен именно наш бот
+                    $this->sendMessage($message['chat']['id'], 'Спасибо, что добавили меня в этот чат! Я помогу вам управлять задачами.');
+                    return;
+                }
             }
         }
     }
@@ -131,12 +141,33 @@ class TelegramService
     }
 
     // Создание задачи из группы
-    private function createTaskFromGroup($chatId, $text, $mentionedUsers)
+    private function createTaskFromGroup($chatId, $text, $mentionedUsers, $user, $project)
     {
-        $taskDescription = str_replace('@your_bot_username', '', $text); // Удаляем упоминание бота
-        $mentionedUsernames = implode(', ', $mentionedUsers);
+        $taskDescription = str_replace(config('services.telegram.username'), '', $text); // Удаляем упоминание бота
+        $responsibles = [];
+        if(!empty($mentionedUsers)){
+            $users = User::whereIn('username', $mentionedUsers);
+            $responsibles = $users->pluck('id')->all();
 
-        $this->sendMessage($chatId, "Задача создана: $taskDescription\nОтветственные: $mentionedUsernames");
+            $existingUsers = $users->pluck('username')->all();
+            $nonExistingUsers = array_diff($mentionedUsers, $existingUsers);
+            $mentionedUsernames = implode(', ', $mentionedUsers);
+        }
+
+        if(!empty($nonExistingUsers)) {
+            $keyboard = [
+                [
+                    [
+                        'text' => 'Войти в систему',
+                        'url' => 'https://t.me/'.config('services.telegram.username').'?start=start_command'
+                    ]
+                ]
+            ];
+            $this->sendMessage($chatId, "Указанных пользователей нет в системе: ".$mentionedUsernames, $keyboard);
+        }else{
+            (new TaskService())->make($chatId, $text, $user, $project, [], $responsibles);
+            $this->sendMessage($chatId, "Задача создана: $taskDescription\nОтветственные: $mentionedUsernames");
+        }
     }
 
     // Создание задачи с файлами
