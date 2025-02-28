@@ -43,6 +43,6 @@ return [
 
     'yandex' => [
         'folder_id' => env('YANDEX_FOLDER_ID'),
-        'iam_token' => env('YANDEX_IAM_TOKEN')
+        'token' => env('YANDEX_VERIFY_CODE')
     ]
 ];

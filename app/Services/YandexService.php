@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -51,7 +52,7 @@ class YandexService
     private function recognizeSpeechWithYandex($oggFilePath): string
     {
         $folderId = config('services.yandex.folder_id');
-        $iamToken = config('services.yandex.iam_token');
+        $iamToken = Cache::get('yandex_iam_token');
 
         if (!$folderId || !$iamToken) {
             Log::error('Не указаны folderId или iamToken для Yandex SpeechKit.');
