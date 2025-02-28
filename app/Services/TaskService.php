@@ -316,6 +316,7 @@ class TaskService
             if ($reminderTime) {
                 $this->scheduleReminder($task, $reminderTime, $chatId);
             }
+            return $task;
         }catch (\Exception $e){
             (new TelegramService())->sendMessage($chatId, "Произошла ошибка, попробуйте еще раз!");
         }

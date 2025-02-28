@@ -143,30 +143,74 @@ class TelegramService
     // Создание задачи из группы
     private function createTaskFromGroup($chatId, $text, $mentionedUsers, $user, $project)
     {
-        $taskDescription = str_replace(config('services.telegram.username'), '', $text); // Удаляем упоминание бота
-        $responsibles = [];
-        if(!empty($mentionedUsers)){
-            $users = User::whereIn('username', $mentionedUsers);
-            $responsibles = $users->pluck('id')->all();
+        $mentionedUsers = array_map(function($username) {
+            return ltrim($username, '@'); // Удаляем @ с начала строки
+        }, $mentionedUsers);
 
+        // Извлекаем описание задачи, исключая упоминание бота
+        $botUsername = config('services.telegram.username');
+        $taskDescription = str_replace($botUsername, '', $text);
+
+        // Удаляем лишние пробелы
+        $taskDescription = trim(preg_replace('/\s+/', ' ', $taskDescription));
+
+        // Находим ответственных пользователей
+        $responsibles = [];
+        if (!empty($mentionedUsers)) {
+            $users = User::whereIn('username', $mentionedUsers)->get();
+            $responsibles = $users->pluck('id')->all();
             $existingUsers = $users->pluck('username')->all();
             $nonExistingUsers = array_diff($mentionedUsers, $existingUsers);
-            $mentionedUsernames = implode(', ', $mentionedUsers);
         }
 
-        if(!empty($nonExistingUsers)) {
+        // Удаляем упоминания пользователей из описания задачи
+        foreach ($mentionedUsers as $usr) {
+            $taskDescription = str_replace($usr, '', $taskDescription);
+        }
+        $taskDescription = str_replace('@', '', $taskDescription);
+
+        // Формируем список упомянутых пользователей
+        $mentionedUsernamesWithAt = array_map(function($username) {
+            return '@' . $username; // Добавляем @ перед каждым именем
+        }, $mentionedUsers);
+        $mentionedUsernames = implode(', ', array_map('trim', $mentionedUsernamesWithAt)) ?: 'Нет упоминаний';
+
+        // Если есть пользователи, которых нет в системе
+        if (!empty($nonExistingUsers)) {
             $keyboard = [
                 [
                     [
                         'text' => 'Войти в систему',
-                        'url' => 'https://t.me/'.config('services.telegram.username').'?start=start_command'
+                        'url' => 'https://t.me/' . config('services.telegram.username') . '?start=start_command',
+                    ],
+                ],
+            ];
+
+            $this->sendMessage(
+                $chatId,
+                "Не удалось создать задачу.\nУказанных пользователей нет в системе: " . implode(', ', array_map('trim', $nonExistingUsers)),
+                $keyboard
+            );
+        } else {
+            // Создаем задачу
+            $task = (new TaskService())->make($chatId, $taskDescription, $user, $project, [], $responsibles);
+
+            // Отправляем подтверждение создания задачи
+            $txt = "Задача создана: $taskDescription";
+            if(!empty($mentionedUsers)) {
+                $txt .= "\nОтветственные: $mentionedUsernames";
+            }
+
+            $keyboard = [
+                [
+                    [
+                        'text' => 'Открыть',
+                        'url' => config('app.url') . '/project/' . $project->id . '?uid=' . $user->telegram_id . '&task=' . $task->id
                     ]
                 ]
             ];
-            $this->sendMessage($chatId, "Указанных пользователей нет в системе: ".$mentionedUsernames, $keyboard);
-        }else{
-            (new TaskService())->make($chatId, $text, $user, $project, [], $responsibles);
-            $this->sendMessage($chatId, "Задача создана: $taskDescription\nОтветственные: $mentionedUsernames");
+
+            $this->sendMessage($chatId, $txt, $keyboard);
         }
     }
 

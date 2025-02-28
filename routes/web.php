@@ -11,5 +11,5 @@ Route::get('/project/{id}', [\App\Http\Controllers\ProjectController::class, 'sh
 
 # TODO
 /*
- * Делаем группы (И кнопка активировать меня в чате)
+ * TODO при переносе таски в колонке ошибка!
  */
