@@ -55,6 +55,21 @@ class TelegramService
             }
         }
 
+        // Обработка фото для групп
+        if((isset($document) && !empty($document)) || (isset($photo) && !empty($photo))){
+            if($isGroupChat){
+                // Используем caption, если text пустой
+                $description = !empty($text) ? $text : $caption;
+                if (empty($description)) {
+                    // Если есть файл, но нет текста или описания
+                    $this->sendMessage($chatId, 'Пожалуйста, добавьте описание к файлу.');
+                } else {
+                    // Если есть файл и текст/описание
+                    $this->createTaskFromGroup($chatId, $description, $mentionedUsers, $user, $project, $document ?? $photo);
+                }
+            }
+        }
+
         // Логика для личного диалога
         if (!$isGroupChat) {
             if ($voice) {
@@ -90,13 +105,7 @@ class TelegramService
             if ($voice) {
                 // Обработка голосовых сообщений с упоминанием бота
                 $this->recognizeSpeech($chatId, $voice);
-            } elseif (($document || $photo) && !$text) {
-                // Если есть файл, но нет текста
-                $this->sendMessage($chatId, 'Пожалуйста, добавьте описание к файлу.');
-            } elseif (($document || $photo) && $text) {
-                // Если есть файл и текст
-                $this->createTaskFromGroupWithFiles($chatId, $text, $document ?? $photo);
-            } elseif ($text) {
+            }elseif ($text) {
                 // Обработка текстовых сообщений с упоминанием бота
                 $this->createTaskFromGroup($chatId, $text, $mentionedUsers, $user, $project);
             }
@@ -141,7 +150,7 @@ class TelegramService
     }
 
     // Создание задачи из группы
-    private function createTaskFromGroup($chatId, $text, $mentionedUsers, $user, $project)
+    private function createTaskFromGroup($chatId, $text, $mentionedUsers, $user, $project, array $files = [])
     {
         $mentionedUsers = array_map(function($username) {
             return ltrim($username, '@'); // Удаляем @ с начала строки
@@ -193,7 +202,7 @@ class TelegramService
             );
         } else {
             // Создаем задачу
-            $task = (new TaskService())->make($chatId, $taskDescription, $user, $project, [], $responsibles);
+            $task = (new TaskService())->make($chatId, $taskDescription, $user, $project, $files, $responsibles);
 
             // Отправляем подтверждение создания задачи
             $txt = "Задача создана: $taskDescription";
