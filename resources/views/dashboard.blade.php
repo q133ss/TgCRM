@@ -127,8 +127,8 @@
                 <p><span>@</span>{{$user->username}}</p>
             </div>
             <ul class="sidebar-menu">
-                @foreach($projects as $project)
-                    <li><a href="{{route('project.show', $project->id)}}?uid={{request()->uid}}">{{$project->title}}</a></li>
+                @foreach($projects as $item)
+                    <li><a href="{{route('project.show', $item->id)}}?uid={{request()->uid}}">{{$item->title}}</a></li>
                 @endforeach
             </ul>
         </div>
@@ -350,7 +350,7 @@
 
     // Function to send AJAX request to update task's column_id
     function updateTaskColumn(taskId, newColumnId, text) {
-        fetch('/update/api/task/'+taskId+'?uid={{request()->uid}}', {
+        fetch('/api/update/task/'+taskId+'?uid={{request()->uid}}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

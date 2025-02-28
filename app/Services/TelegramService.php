@@ -18,7 +18,9 @@ class TelegramService
         $document = $message['document'] ?? null;
         $photo = $message['photo'] ?? null;
 
-        $project = $taskService->checkCreateProject($chatId, $user, false);
+        $chatTitle = isset($message['chat']['title']) ? $message['chat']['title'] : $user->first_name;
+
+        $project = $taskService->checkCreateProject($chatId, $user, false, $chatTitle);
 
         // Проверяем, является ли чат групповым
         $isGroupChat = $message['chat']['type'] === 'group' || $message['chat']['type'] === 'supergroup';
@@ -56,16 +58,26 @@ class TelegramService
         }
 
         // Обработка фото для групп
-        if((isset($document) && !empty($document)) || (isset($photo) && !empty($photo))){
-            if($isGroupChat){
+        if ((isset($document) && !empty($document)) || (isset($photo) && !empty($photo))) {
+            if ($isGroupChat) {
                 // Используем caption, если text пустой
                 $description = !empty($text) ? $text : $caption;
+
                 if (empty($description)) {
                     // Если есть файл, но нет текста или описания
                     $this->sendMessage($chatId, 'Пожалуйста, добавьте описание к файлу.');
                 } else {
-                    // Если есть файл и текст/описание
-                    $this->createTaskFromGroup($chatId, $description, $mentionedUsers, $user, $project, $document ?? $photo);
+                    // Преобразуем $photo в массив массивов
+                    $files = [];
+                    if (!empty($document)) {
+                        $files[] = [$document]; // Добавляем документ как один файл
+                    }
+                    if (!empty($photo)) {
+                        $files[] = $photo; // Добавляем фото как массив миниатюр
+                    }
+
+                    // Создаем задачу
+                    $this->createTaskFromGroup($chatId, $description, $mentionedUsers, $user, $project, $files);
                 }
             }
         }

@@ -165,11 +165,16 @@ class TaskService
 
         // Скачиваем файл на сервер
         $response = file_get_contents($filePath);
-        $localPath = storage_path('app/files/' . basename($filePath));
 
+        // Генерируем имя файла
+        $fileName = basename($filePath);
+
+        // Сохраняем файл в storage/app/files/
+        $localPath = storage_path('app/files/' . $fileName);
         file_put_contents($localPath, $response);
 
-        return $localPath;
+        // Возвращаем относительный путь
+        return '/storage/app/files/' . $fileName;
     }
 
     public function scheduleReminder(Task $task, $minutesBefore, string $chatId)
@@ -188,7 +193,7 @@ class TaskService
         (new TelegramService())->sendMessage($chatId, '⏰ Не удалось установить напоминание для задачи. Время выполнения не указано.');
     }
 
-    public function checkCreateProject(string $chatId, User $user, bool $isGroup)
+    public function checkCreateProject(string $chatId, User $user, bool $isGroup, $title)
     {
         $project = Project::where('chat_id', $chatId);
 
@@ -198,7 +203,7 @@ class TaskService
                 $project = Project::create([
                     'chat_id' => $chatId,
                     'created_by' => $user->id,
-                    'title' => $user->first_name ?? 'Проект',
+                    'title' => $title,
                     'is_group' => $isGroup
                 ]);
 
@@ -301,14 +306,43 @@ class TaskService
             }
 
             // Сохраняем файлы, если они есть
-            if (!empty($files)) {
-                foreach ($files as $file) {
-                    $filePath = $this->saveFile($file);
-                    File::create([
-                        'src' => $filePath,
-                        'fileable_id' => $task->id,
-                        'fileable_type' => Task::class,
-                    ]);
+            $originalFiles = [];
+            foreach ($files as $fileGroup) {
+                if (!is_array($fileGroup)) {
+                    \Log::error('Invalid file group data:', ['data' => $fileGroup]);
+                    continue; // Пропускаем невалидные данные
+                }
+
+                // Находим файл с максимальным разрешением (оригинал)
+                $originalFile = array_reduce($fileGroup, function ($carry, $item) {
+                    if (!is_array($item) || !isset($item['width']) || !isset($item['height'])) {
+                        \Log::error('Invalid file item data:', ['data' => $item]);
+                        return $carry; // Пропускаем невалидные данные
+                    }
+
+                    if (!$carry || $item['width'] > $carry['width']) {
+                        return $item;
+                    }
+                    return $carry;
+                }, null);
+
+                if ($originalFile) {
+                    $originalFiles[] = $originalFile;
+                }
+            }
+
+            if (!empty($originalFiles)) {
+                foreach ($originalFiles as $file) {
+                    try {
+                        $filePath = $this->saveFile($file);
+                        File::create([
+                            'src' => $filePath,
+                            'fileable_id' => $task->id,
+                            'fileable_type' => Task::class,
+                        ]);
+                    } catch (\Exception $e) {
+                        \Log::error('Error saving file:', ['error' => $e->getMessage(), 'file' => $file]);
+                    }
                 }
             }
 

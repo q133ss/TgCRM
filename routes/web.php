@@ -8,8 +8,3 @@ Route::get('/', function () {
 
 Route::get('/projects', [\App\Http\Controllers\ProjectController::class, 'index'])->name('project.index');
 Route::get('/project/{id}', [\App\Http\Controllers\ProjectController::class, 'show'])->name('project.show');
-
-# TODO
-/*
- * TODO при переносе таски в колонке ошибка!
- */
