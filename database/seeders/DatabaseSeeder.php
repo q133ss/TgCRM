@@ -43,9 +43,13 @@ class DatabaseSeeder extends Seeder
             Role::create(['slug' => $slug, 'name' => $name]);
         }
 
+        // admin user
+        User::create([
+            'username' => 'admin',
+            'is_admin' => true
+        ]);
 
         // for local
-
         if(app()->isLocal()):
             $user = User::create([
                 'username' => 'miroshkin222',
