@@ -9,7 +9,8 @@ Route::get('/', function () {
 Route::get('/projects', [\App\Http\Controllers\ProjectController::class, 'index'])->name('project.index');
 Route::get('/project/{id}', [\App\Http\Controllers\ProjectController::class, 'show'])->name('project.show');
 
-Route::get('/')->name('auth');
+Route::get('/auth', [\App\Http\Controllers\LoginController::class, 'auth'])->name('auth');
+Route::redirect('/login', '/')->name('login');
 
 Route::view('/admin/login', 'admin.login')->name('admin.login');
 Route::post('/admin/login', [\App\Http\Controllers\Admin\LoginController::class, 'login'])->name('admin.login');
@@ -27,3 +28,5 @@ Route::group(['prefix' => 'dashboard', 'as' => 'dashboard.'], function (){
     Route::get('/users', [\App\Http\Controllers\Dashboard\IndexController::class, 'index'])->name('users');
     Route::get('/faq', [\App\Http\Controllers\Dashboard\IndexController::class, 'index'])->name('faq');
 });
+
+# TODO добавить activity!

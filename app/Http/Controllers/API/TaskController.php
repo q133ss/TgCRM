@@ -46,8 +46,10 @@ class TaskController extends Controller
                 'tasks.id as task_id',
                 'tasks.title as task_title',
                 'tasks.date',
+                'tasks.time',
+                'tasks.description',
                 'columns.id as column_id',
-                'columns.title as column_title'
+                'columns.title as column_title',
             )
             ->get();
 
@@ -62,18 +64,27 @@ class TaskController extends Controller
 
             // Формируем массив задач для текущей колонки
             $items = [];
+            // В $tasksInColumn нет description
             foreach ($tasksInColumn as $task) {
+                # TODO исправить!!!!
+                $modelTask = Task::where('tasks.id',$task->task_id)->first();
+                $responsibleNames = $modelTask?->responsible?->pluck('first_name');
+                $allFiles = $modelTask->files;
+                $files = $allFiles?->pluck('src')->all();
+                $filesCount = $allFiles?->count();
+
                 $items[] = [
                     "id" => "task-" . $task->task_id,
                     "title" => $task->task_title, // Используем название задачи
                     "comments" => "0", // Заглушка
                     "description" => $task->description,
-                    "badge-text" => "Default", // Заглушка
+                    "badge-text" => "Без категории", // Заглушка
                     "badge" => "primary", // Заглушка
                     "due-date" => $task->date ? Carbon::parse($task->date)->format('j F') : 'No Date', // Форматируем дату
-                    "attachments" => "0", // Заглушка
-                    "assigned" => ["3.png"], // Заглушка
-                    "members" => [$this->user?->first_name] // Заглушка
+                    "attachments" => $filesCount,
+                    "assigned" => $responsibleNames, // Заглушка
+                    "members" => $responsibleNames,
+                    "files" => $files
                 ];
             }
 

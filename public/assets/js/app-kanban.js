@@ -151,40 +151,41 @@
   }
 
   // Render avatar
-  function renderAvatar(images, pullUp, size, margin, members) {
-    var $transition = pullUp ? ' pull-up' : '',
-      $size = size ? 'avatar-' + size + '' : '',
-      member = members == undefined ? ' ' : members.split(',');
+    function renderAvatar(images, pullUp, size, margin, members) {
+        var $transition = pullUp ? ' pull-up' : '',
+            $size = size ? 'avatar-' + size : '',
+            member = members == undefined ? [] : members.split(',');
 
-    return images == undefined
-      ? ' '
-      : images
-          .split(',')
-          .map(function (img, index, arr) {
-            var $margin = margin && index !== arr.length - 1 ? ' me-' + margin + '' : '';
+        return images == undefined
+            ? ' '
+            : images
+                .split(',')
+                .map(function (img, index, arr) {
+                    var $margin = margin && index !== arr.length - 1 ? ' me-' + margin : '';
 
-            return (
-              "<div class='avatar " +
-              $size +
-              $margin +
-              "'" +
-              "data-bs-toggle='tooltip' data-bs-placement='top'" +
-              "title='" +
-              member[index] +
-              "'" +
-              '>' +
-              "<img src='" +
-              assetsPath +
-              'img/avatars/' +
-              img +
-              "' alt='Avatar' class='rounded-circle " +
-              $transition +
-              "'>" +
-              '</div>'
-            );
-          })
-          .join(' ');
-  }
+                    // Генерация инициалов
+                    var initials = member[index]
+                        ? member[index].trim().split(' ').map(word => word[0]).join('').toLowerCase()
+                        : '';
+
+                    return (
+                        "<div class='avatar " +
+                        $size +
+                        $margin +
+                        "'" +
+                        "data-bs-toggle='tooltip' data-bs-placement='top'" +
+                        "title='" +
+                        member[index] +
+                        "'" +
+                        '>' +
+                        "<span class='avatar-initial rounded-circle bg-primary'>" +
+                        initials +
+                        "</span>" +
+                        '</div>'
+                    );
+                })
+                .join(' ');
+    }
 
   // Render footer
   function renderFooter(attachments, comments, assigned, members) {
@@ -194,11 +195,13 @@
       "<span class='attachments'>" +
       attachments +
       '</span>' +
-      "</span> <span class='align-middle'><i class='ri-wechat-line ri-20px me-1'></i>" +
-      '<span> ' +
-      comments +
-      ' </span>' +
-      '</span></div>' +
+      "</span> " +
+      // "<span class='align-middle'><i class='ri-wechat-line ri-20px me-1'></i>" +
+      // '<span> ' +
+      // comments +
+      // ' </span>' +
+      // '</span>' +
+      '</div>' +
       "<div class='avatar-group d-flex align-items-center assigned-avatar'>" +
       renderAvatar(assigned, true, 'xs', null, members) +
       '</div>' +
@@ -234,6 +237,60 @@
           : dateObj.getDate() + ' ' + dateObj.toLocaleString('en', { month: 'long' }) + ', ' + year,
         label = element.getAttribute('data-badge-text'),
         avatars = element.getAttribute('data-assigned');
+        let description = element.getAttribute('data-description');
+
+        // Файлы
+        let files = element.getAttribute('data-files'); // Получаем строку с файлами
+        console.log(files);
+
+// Находим div, куда будем выводить файлы
+        let filesDiv = document.querySelector('#files');
+
+        if (files) {
+            // Разделяем строку на массив путей к файлам
+            let fileArray = files.split(',');
+
+            // Очищаем содержимое div перед добавлением новых файлов
+            filesDiv.innerHTML = '';
+
+            // Проходим по каждому файлу
+            fileArray.forEach(file => {
+                let trimmedFile = file.trim(); // Убираем лишние пробелы
+                // Определяем тип файла по расширению
+                if (/\.(jpg|jpeg|png|gif)$/i.test(file)) {
+                    let link = document.createElement('a');
+                    link.href = trimmedFile;
+                    link.target = '_blank'; // Открываем в новой вкладке
+                    link.style.display = 'inline-block'; // Делаем ссылку блочным элементом
+                    link.style.margin = '5px'; // Опционально: добавляем отступы
+
+                    let img = document.createElement('img');
+                    img.src = trimmedFile; // Устанавливаем путь к изображению
+                    img.style.maxWidth = '100px'; // Ограничиваем размер изображения
+                    img.style.cursor = 'pointer'; // Добавляем указатель мыши
+
+                    link.appendChild(img); // Добавляем изображение внутрь ссылки
+                    filesDiv.appendChild(link); // Добавляем ссылку в div
+                } else {
+                    // Если это документ, создаем элемент <a> с иконкой
+                    let link = document.createElement('a');
+                    link.href = file.trim(); // Убираем лишние пробелы
+                    link.target = '_blank'; // Открываем ссылку в новой вкладке
+                    link.textContent = 'Document'; // Текст ссылки
+                    link.style.display = 'block'; // Делаем ссылку блочным элементом
+                    link.style.margin = '5px'; // Опционально: добавляем отступы
+
+                    // Добавляем иконку (например, FontAwesome)
+                    let icon = document.createElement('i');
+                    icon.className = 'fas fa-file-alt'; // Иконка документа (FontAwesome)
+                    icon.style.marginRight = '5px'; // Отступ между иконкой и текстом
+                    link.prepend(icon); // Добавляем иконку перед текстом
+
+                    filesDiv.appendChild(link);
+                }
+            });
+        }
+        // /Файлы
 
       // Show kanban offcanvas
       kanbanOffcanvas.show();
@@ -241,6 +298,7 @@
       // To get data on sidebar
       kanbanSidebar.querySelector('#title').value = title;
       kanbanSidebar.querySelector('#due-date').nextSibling.value = dateToUse;
+      kanbanSidebar.querySelector('#description').value = description;
 
       // ! Using jQuery method to get sidebar due to select2 dependency
       $('.kanban-update-item-sidebar').find(select2).val(label).trigger('change');
@@ -251,10 +309,7 @@
         .querySelector('.assigned')
         .insertAdjacentHTML(
           'afterbegin',
-          renderAvatar(avatars, false, 'sm', '2', el.getAttribute('data-members')) +
-            "<div class='avatar avatar-sm ms-2'>" +
-            "<span class='avatar-initial rounded-circle bg-label-secondary'><i class='ri-add-line'></i></span>" +
-            '</div>'
+          renderAvatar(avatars, false, 'sm', '2', el.getAttribute('data-members'))
         );
     },
 

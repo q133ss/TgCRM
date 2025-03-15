@@ -83,18 +83,19 @@
                                     <label for="due-date">Дата</label>
                                 </div>
                                 <div class="mb-5">
-                                    <label class="form-label">Assigned</label>
+                                    <label class="form-label">Ответственные</label>
                                     <div class="assigned d-flex flex-wrap"></div>
                                 </div>
                                 <div class="mb-5">
                                     <label class="form-label" for="attachments">Вложения</label>
                                     <div>
-                                        <input type="file" class="form-control" id="attachments" />
+                                        <input type="file" class="form-control" multiple id="attachments" />
                                     </div>
+                                    <div id="files"></div>
                                 </div>
                                 <div class="mb-5">
                                     <label class="form-label">Описание</label>
-                                    <textarea name="description" class="form-control" id="" cols="15" rows="3"></textarea>
+                                    <textarea name="description" class="form-control" id="description" cols="15" rows="3"></textarea>
                                 </div>
                                 <div>
                                     <div class="d-flex flex-wrap">
