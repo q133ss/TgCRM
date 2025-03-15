@@ -7,9 +7,10 @@ use Carbon\Carbon;
 
 class TelegramService
 {
-    public function processMessage($message, User $user)
+    public function processMessage($update, User $user)
     {
         $taskService = new TaskService();
+        $message = $update['message'] ?? $update['edited_message'];
         $chatId = $message['chat']['id'];
         $text = $message['text'] ?? '';
         $caption = $message['caption'] ?? '';
@@ -112,23 +113,35 @@ class TelegramService
                 $taskService->create($chatId, $text, $user, $project, $files);
             }
         }
-        // Логика для группового чата
-        elseif ($isGroupChat && $botMentioned) {
-            if ($voice) {
-                // Обработка голосовых сообщений с упоминанием бота
-                $this->recognizeSpeech($chatId, $voice);
-            }elseif ($text) {
+        elseif($isGroupChat){
+            // Приветственное сообщение при добавлении бота в группу
+            if (isset($message['new_chat_members'])) {
+                foreach ($message['new_chat_members'] as $member) {
+                    if ($member['id'] == config('services.telegram.id')) { // Проверяем, что добавлен именно наш бот
+                        $this->sendMessage($message['chat']['id'], 'Спасибо, что добавили меня в этот чат! Я помогу вам управлять задачами.');
+                        return;
+                    }
+                }
+            }
+
+            if($botMentioned && $text) {
                 // Обработка текстовых сообщений с упоминанием бота
+                $this->sendMessage($chatId, 'ЗАДАЧА СОЗДАНА111');
                 $this->createTaskFromGroup($chatId, $text, $mentionedUsers, $user, $project);
             }
-        }
 
-        // Приветственное сообщение при добавлении бота в группу
-        if ($isGroupChat && isset($message['new_chat_members'])) {
-            foreach ($message['new_chat_members'] as $member) {
-                if ($member['id'] == config('services.telegram.id')) { // Проверяем, что добавлен именно наш бот
-                    $this->sendMessage($message['chat']['id'], 'Спасибо, что добавили меня в этот чат! Я помогу вам управлять задачами.');
-                    return;
+            if (isset($update['edited_message'])) {
+                $editedMessage = $update['edited_message'];
+                $text = $editedMessage['caption'] ?? '';
+                $voice = $editedMessage['voice'] ?? null;
+
+                $isVoice = is_array($voice);
+                $isBotMentioned = strpos($text, config('services.telegram.username')) !== false;
+                if ($isVoice && $isBotMentioned) {
+                    // Дальше делаем, что-то вроде
+                    // К тому же надо найти всех, кого упомянули (вдруг там не только бот!)
+                    $taskText = (new YandexService())->recognizeSpeech($chatId, $voice);
+                    (new TaskService())->create($chatId, $taskText, $user, $project, [], true);
                 }
             }
         }

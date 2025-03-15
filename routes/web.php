@@ -18,4 +18,12 @@ Route::group(['middleware' => 'auth', 'prefix' => 'admin'], function (){
     Route::get('/finances', [\App\Http\Controllers\Admin\FinanceController::class, 'index'])->name('admin.finance');
 });
 
-Route::view('/newdash', 'newdash');
+Route::group(['prefix' => 'dashboard', 'as' => 'dashboard.'], function (){
+    Route::get('/', [\App\Http\Controllers\Dashboard\IndexController::class, 'index'])->name('index');
+    Route::get('/calendar', [\App\Http\Controllers\Dashboard\CalendarController::class, 'index'])->name('calendar');
+    Route::get('/tasks', [\App\Http\Controllers\Dashboard\TaskController::class, 'index'])->name('tasks');
+    Route::get('/projects', [\App\Http\Controllers\Dashboard\ProjectController::class, 'index'])->name('projects');
+    Route::get('/project/{id}', [\App\Http\Controllers\Dashboard\ProjectController::class, 'show'])->name('projects.show');
+    Route::get('/users', [\App\Http\Controllers\Dashboard\IndexController::class, 'index'])->name('users');
+    Route::get('/faq', [\App\Http\Controllers\Dashboard\IndexController::class, 'index'])->name('faq');
+});

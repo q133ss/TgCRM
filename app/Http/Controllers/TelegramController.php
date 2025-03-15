@@ -12,10 +12,9 @@ class TelegramController extends Controller
     {
         // Получаем данные из запроса
         $update = json_decode($request->getContent(), true);
-
-        if (isset($update['message'])) {
-            $user = (new UserService())->checkAndCreate($update['message']);
-            (new TelegramService())->processMessage($update['message'], $user);
+        if (isset($update['message']) || isset($update['edited_message'])) {
+            $user = (new UserService())->checkAndCreate($update['message'] ?? $update['edited_message']);
+            (new TelegramService())->processMessage($update, $user);
         }
 
         return response('OK', 200);

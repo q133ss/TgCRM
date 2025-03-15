@@ -48,8 +48,31 @@ class User extends Authenticatable
         ];
     }
 
-    public function projects()
+    public function projects(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
         return $this->belongsToMany(Project::class, 'project_users');
+    }
+
+    public function tasks()
+    {
+        return $this->belongsToMany(Task::class, 'task_responsibles');
+    }
+
+    public function getCountForFront(string $type)
+    {
+        switch ($type){
+            case 'projects':
+                return $this->pluralize($this->projects?->count(), ['проект', 'проекта', 'проектов']);
+            case 'tasks':
+                return $this->pluralize($this->tasks?->count(), ['задача', 'задачи', 'задач']);
+            default:
+                return 'Ошибка';
+        }
+    }
+
+    private function pluralize($number, $words)
+    {
+        $cases = [2, 0, 1, 1, 1, 2];
+        return $number . ' ' . $words[($number % 100 > 4 && $number % 100 < 20) ? 2 : $cases[min($number % 10, 5)]];
     }
 }

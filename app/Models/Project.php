@@ -12,4 +12,9 @@ class Project extends Model
     {
         return $this->hasMany(Column::class, 'project_id', 'id')->orderBy('order');
     }
+
+    public function members()
+    {
+        return $this->belongsToMany(Project::class, 'project_users');
+    }
 }

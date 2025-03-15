@@ -39,4 +39,9 @@ class Column extends Model
     {
         return $this->hasMany(Task::class, 'column_id', 'id');
     }
+
+    public function project()
+    {
+        return $this->hasOne(Project::class, 'id', 'project_id');
+    }
 }

@@ -20,7 +20,7 @@ class TaskService
         $this->days = '/(понедельник|вторник|среда|четверг|пятница|суббота|воскресенье)/ui';
     }
 
-    public function create(string $chatId, string $text, User $user, Project $project, array $files = [])
+    public function create(string $chatId, string $text, User $user, Project $project, array $files = [], bool $isGroup = false)
     {
         // Извлекаем дату и время из текста
         $parsedDate = $this->parseDate($text);
@@ -69,20 +69,32 @@ class TaskService
                 $cleanText .= " Время {$parsedDate['time']}";
             }
 
-            $keyboard = [
-                [
+            if($isGroup){
+                $keyboard = [
                     [
-                        'text' => 'Открыть',
-                        'web_app' => [
+                        [
+                            'text' => 'Открыть',
                             'url' => config('app.url') . '/project/' . $project->id . '?uid=' . $user->telegram_id . '&task=' . $task->id
                         ]
                     ]
-                ]
-            ];
+                ];
+            }else{
+                $keyboard = [
+                    [
+                        [
+                            'text' => 'Открыть',
+                            'web_app' => [
+                                'url' => config('app.url') . '/project/' . $project->id . '?uid=' . $user->telegram_id . '&task=' . $task->id
+                            ]
+                        ]
+                    ]
+                ];
+            }
 
             // Отправляем подтверждение пользователю
             (new TelegramService())->sendMessage($chatId, "Задача создана: $cleanText", $keyboard);
         }catch (\Exception $e){
+            \Log::error($e);
             (new TelegramService())->sendMessage($chatId, "Произошла ошибка, попробуйте еще раз!");
         }
     }
