@@ -40,6 +40,7 @@ document.addEventListener('DOMContentLoaded', function () {
       eventStartDate = document.querySelector('#eventStartDate'),
       eventEndDate = document.querySelector('#eventEndDate'),
       eventUrl = document.querySelector('#eventURL'),
+      eventTime = document.querySelector('#eventTime'),
       eventLabel = $('#eventLabel'), // ! Using jquery vars due to select2 jQuery dependency
       eventGuests = $('#eventGuests'), // ! Using jquery vars due to select2 jQuery dependency
       eventLocation = document.querySelector('#eventLocation'),
@@ -172,7 +173,11 @@ document.addEventListener('DOMContentLoaded', function () {
       btnSubmit.classList.remove('btn-add-event');
       btnDeleteEvent.classList.remove('d-none');
 
+      console.log(eventToUpdate._def.extendedProps)
       eventTitle.value = eventToUpdate.title;
+      eventDescription.value = eventToUpdate._def.extendedProps.description;
+      eventTime.value = eventToUpdate._def.extendedProps.time;
+
       start.setDate(eventToUpdate.start, true, 'Y-m-d');
       eventToUpdate.allDay === true ? (allDaySwitch.checked = true) : (allDaySwitch.checked = false);
       eventToUpdate.end !== null
@@ -479,7 +484,22 @@ document.addEventListener('DOMContentLoaded', function () {
     // Update Event
     // ------------------------------------------------
     function updateEvent(eventData) {
-        alert('Обновленно')
+        const uid = getQueryParam('uid');
+        let url = uid ? `/api/task/${eventData.id}?uid=${uid}` : '/api/task';
+        $.ajax({
+            url: url,
+            type: 'PATCH',
+            data: JSON.stringify(eventData),
+            contentType: 'application/json',
+            dataType: 'json',
+            success: function (response) {
+                console.log('Успех:', response);
+            },
+            error: function (xhr, status, error) {
+                console.error('Ошибка:', xhr.responseJSON || error);
+            }
+        });
+
       // ? Update existing event data to current events object and refetch it to display on calender
       // ? You can write below code to AJAX call success response
       eventData.id = parseInt(eventData.id);
@@ -566,19 +586,36 @@ document.addEventListener('DOMContentLoaded', function () {
       } else {
         // Update event
         // ------------------------------------------------
-        if (isFormValid) {
-          let eventData = {
-            id: eventToUpdate.id,
-            title: eventTitle.value,
-            start: eventStartDate.value,
-            description: eventDescription.value,
-            display: 'block',
-            allDay: allDaySwitch.checked ? true : false
-          };
+          let colId = null;
+          const uid = getQueryParam('uid');
+          $.ajax({
+              url: '/api/get-column-id/'+eventToUpdate.id+'?uid='+uid,
+              type: 'GET',
+              contentType: 'application/json',
+              dataType: 'json',
+              success: function (response) {
+                  colId = response.id
 
-          updateEvent(eventData);
-          bsAddEventSidebar.hide();
-        }
+                  if (isFormValid) {
+                      let eventData = {
+                          id: eventToUpdate.id,
+                          title: eventTitle.value,
+                          start: eventStartDate.value,
+                          time: eventTime.value,
+                          project_id: projectId.val(),
+                          column_id: colId,
+                          description: eventDescription.value,
+                          display: 'block',
+                      };
+                      updateEvent(eventData);
+                      bsAddEventSidebar.hide();
+                  }
+
+              },
+              error: function (xhr, status, error) {
+                  console.error('Ошибка:', xhr.responseJSON || error);
+              }
+          });
       }
     });
 

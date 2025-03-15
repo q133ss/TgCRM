@@ -243,4 +243,12 @@ class TaskController extends Controller
     {
         return Task::findOrFail($id)->delete();
     }
+
+    public function getColumnById(string $id)
+    {
+        $columnId = Task::findOrFail($id)->column_id;
+        return response()->json([
+            'id' => $columnId
+        ]);
+    }
 }

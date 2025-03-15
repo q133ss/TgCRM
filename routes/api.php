@@ -17,5 +17,7 @@ Route::get('/task/{id}', [\App\Http\Controllers\API\TaskController::class, 'show
 Route::delete('/task/{id}', [\App\Http\Controllers\API\TaskController::class, 'delete']);
 Route::patch('/task/{id}', [\App\Http\Controllers\API\TaskController::class, 'update']);
 Route::post('/update/task/{id}', [\App\Http\Controllers\API\TaskController::class, 'update']);
+Route::get('/get-column-id/{task_id}', [\App\Http\Controllers\API\TaskController::class, 'getColumnById']);
 
 // Задачи в календаре еще не добавлявляются и не обновляются
+# TODO url из webapp

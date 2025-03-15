@@ -139,6 +139,7 @@
                                     </select>
                                     <label for="projectId">Проект</label>
                                 </div>
+
                                 <div class="form-floating form-floating-outline mb-5">
                                     <input
                                         type="text"
