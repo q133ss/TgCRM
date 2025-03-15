@@ -437,19 +437,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Add Event
     // ------------------------------------------------
     function addEvent(eventData) {
-        console.log(eventData);
-
-        // TODO column ошибка
-        // TODO project_id ошибка
-
-        // project_id
         console.log('Исходные данные:', eventData);
-
-        // Переименование projectId в project_id
-        const { projectId, ...rest } = eventData;
-        const updatedEventData = { project_id: projectId, ...rest };
-
-        console.log('Обновленные данные:', updatedEventData);
 
         const uid = getQueryParam('uid');
         let url = uid ? `/api/task?uid=${uid}` : '/api/task';
@@ -568,20 +556,37 @@ document.addEventListener('DOMContentLoaded', function () {
     btnSubmit.addEventListener('click', e => {
       if (btnSubmit.classList.contains('btn-add-event')) {
         if (isFormValid) {
-          let newEvent = {
-            title: eventTitle.value,
-            display: 'block',
-            projectId: projectId.val(),
-            description: eventDescription.value
-          };
-          if (eventStartDate.value) {
-            newEvent.eventStartDate = eventStartDate.value;
-          }
-          if (eventTime.value) {
-            newEvent.eventTime = eventTime.value;
-          }
-          addEvent(newEvent);
-          bsAddEventSidebar.hide();
+            const uid = getQueryParam('uid');
+            $.ajax({
+                url: '/api/get-first-column/'+projectId.val()+'?uid='+uid,
+                type: 'GET',
+                contentType: 'application/json',
+                dataType: 'json',
+                success: function (response) {
+                    let colId = response.id
+
+                    let newEvent = {
+                        title: eventTitle.value,
+                        display: 'block',
+                        date: eventStartDate.value.split(' ')[0],
+                        time: eventTime.value,
+                        project_id: projectId.val(),
+                        column_id: colId,
+                        description: eventDescription.value
+                    };
+                    if (eventStartDate.value) {
+                        newEvent.eventStartDate = eventStartDate.value;
+                    }
+                    if (eventTime.value) {
+                        newEvent.eventTime = eventTime.value;
+                    }
+                    addEvent(newEvent);
+                    bsAddEventSidebar.hide();
+                },
+                error: function (xhr, status, error) {
+                    console.error('Ошибка:', xhr.responseJSON || error);
+                }
+            });
         }
       } else {
         // Update event

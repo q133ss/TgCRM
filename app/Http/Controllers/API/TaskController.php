@@ -251,4 +251,12 @@ class TaskController extends Controller
             'id' => $columnId
         ]);
     }
+
+    public function getFirstColumn(string $id)
+    {
+        $columnId = Project::findOrFail($id)->columns?->first()->id;
+        return response()->json([
+            'id' => $columnId
+        ]);
+    }
 }
