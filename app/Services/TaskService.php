@@ -93,6 +93,7 @@ class TaskService
 
             // Отправляем подтверждение пользователю
             (new TelegramService())->sendMessage($chatId, "Задача создана: $cleanText", $keyboard);
+            return $task;
         }catch (\Exception $e){
             \Log::error($e);
             (new TelegramService())->sendMessage($chatId, "Произошла ошибка, попробуйте еще раз!");

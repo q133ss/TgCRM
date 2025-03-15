@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class TelegramService
 {
@@ -130,20 +131,102 @@ class TelegramService
                 $this->createTaskFromGroup($chatId, $text, $mentionedUsers, $user, $project);
             }
 
+            ///
             if (isset($update['edited_message'])) {
                 $editedMessage = $update['edited_message'];
                 $text = $editedMessage['caption'] ?? '';
                 $voice = $editedMessage['voice'] ?? null;
+                $entities = $editedMessage['caption_entities'] ?? [];
 
+                // Проверяем, что это голосовое сообщение
                 $isVoice = is_array($voice);
-                $isBotMentioned = strpos($text, config('services.telegram.username')) !== false;
-                if ($isVoice && $isBotMentioned) {
-                    // Дальше делаем, что-то вроде
-                    // К тому же надо найти всех, кого упомянули (вдруг там не только бот!)
-                    $taskText = (new YandexService())->recognizeSpeech($chatId, $voice);
-                    (new TaskService())->create($chatId, $taskText, $user, $project, [], true);
+                $notExistsUsers = [];
+
+                if ($isVoice) {
+                    // Извлекаем все упоминания из текста
+                    $mentions = [];
+                    $isBotMentioned = false; // Флаг для проверки упоминания бота
+                    foreach ($entities as $entity) {
+                        if ($entity['type'] === 'mention') {
+                            // Для упоминаний типа mention берем username
+                            $offset = $entity['offset'];
+                            $length = $entity['length'];
+                            $username = substr($text, $offset, $length);
+
+                            // Проверяем, упомянут ли бот
+                            if ($username === config('services.telegram.username')) {
+                                $isBotMentioned = true;
+                            }
+
+                            $mentions[] = $username;
+                        } elseif ($entity['type'] === 'text_mention') {
+                            // Для упоминаний типа text_mention берем user_id
+                            $userId = $entity['user']['id'];
+
+                            // Проверяем, упомянут ли бот (если ID бота известен)
+                            if ($userId === config('services.telegram.bot_id')) {
+                                $isBotMentioned = true;
+                            }
+
+                            $mentions[] = $userId;
+                        }
+                    }
+
+                    // Если бот упомянут, создаем задачи для всех упомянутых пользователей
+                    if ($isBotMentioned && !empty($mentions)) {
+                        // Распознаем текст из голосового сообщения
+                        $taskText = (new YandexService())->recognizeSpeech($chatId, $voice);
+
+                        $task = (new TaskService())->create(
+                            $chatId,
+                            $taskText,
+                            $user,
+                            $project,
+                            [],
+                            true
+                        );
+
+                        foreach ($mentions as $mention) {
+                            // Создаем задачу для каждого упомянутого пользователя
+                            // Ставим ответсвенных! и отпрвляем сообщение
+                            $mentionUser = User::where('username', str_replace('@', '', $mention))->first();
+                            if($mentionUser) {
+                                if($user->id != $mentionUser->id) {
+                                    DB::table('task_responsibles')->insert([
+                                        'task_id' => $task->id,
+                                        'user_id' => $mentionUser->id
+                                    ]);
+                                }
+                            }else{
+                                if($mention != config('services.telegram.username')){
+                                    $notExistsUsers[] = $mention;
+                                }
+                            }
+                        }
+                    } else {
+                        \Log::info("Бот не был упомянут, задачи не создаются.");
+                    }
+
+                    if(!empty($notExistsUsers)){
+                        $keyboard = [
+                            [
+                                [
+                                    'text' => 'Войти в систему',
+                                    'url' => 'https://t.me/' . config('services.telegram.username') . '?start=start_command',
+                                ],
+                            ],
+                        ];
+                        $usersText = implode(', ', $notExistsUsers);
+                        $this->sendMessage(
+                            $chatId,
+                            "Пользователи $usersText не зарегистрированы в системе. Добавить их в задачу не удалось",
+                            $keyboard
+                        );
+                    }
+
                 }
             }
+            ///
         }
     }
     public function sendMessage($chatId, $text, $keyboard = [])
