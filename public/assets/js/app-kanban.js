@@ -238,12 +238,12 @@
         label = element.getAttribute('data-badge-text'),
         avatars = element.getAttribute('data-assigned');
         let description = element.getAttribute('data-description');
-
+        if(description == 'null'){
+            description = '';
+        }
         // Файлы
         let files = element.getAttribute('data-files'); // Получаем строку с файлами
-        console.log(files);
-
-// Находим div, куда будем выводить файлы
+        // Находим div, куда будем выводить файлы
         let filesDiv = document.querySelector('#files');
 
         if (files) {
@@ -329,9 +329,6 @@
       addNew.addEventListener('submit', function (e) {
         e.preventDefault();
 
-
-        ////
-
           try {
               // Извлекаем project_id из URL
               const path = window.location.pathname;
@@ -363,31 +360,64 @@
                   headers: {
                       'Content-Type': 'application/json',
                   },
-                  body: JSON.stringify(data)
-              });
+                  body: JSON.stringify(data),
+                  // success: () => {
+                  //     alert(111)
+                  //     const result = response;
+                  //     const currentBoard = [].slice.call(
+                  //         document.querySelectorAll('.kanban-board[data-id=' + boardId + '] .kanban-item')
+                  //     );
+                  //     kanban.addElement(boardId, {
+                  //         title: "<span class='kanban-text'>" + title + '</span>',
+                  //         id: boardId + '-' + currentBoard.length + 1
+                  //     });
+                  //
+                  //     // add dropdown in new boards
+                  //     const kanbanText = [].slice.call(
+                  //         document.querySelectorAll('.kanban-board[data-id=' + boardId + '] .kanban-text')
+                  //     );
+                  //     kanbanText.forEach(function (e) {
+                  //         e.insertAdjacentHTML('beforebegin', renderDropdown());
+                  //     });
+                  // }
+              }).then(response => {
+                  if (!response.ok) {
+                      throw new Error('Network response was not ok');
+                  }
+                  return response.json(); // Если сервер возвращает JSON, парсим его
+              })
+                  .then(result => {
+                      const currentBoard = [].slice.call(
+                          document.querySelectorAll(`.kanban-board[data-id="${boardId}"] .kanban-item`)
+                      );
+
+                      kanban.addElement(boardId, {
+                          title: "<span class='kanban-text'>" + title + '</span>',
+                          id: boardId + '-' + currentBoard.length + 1,
+                      });
+
+                      // Добавляем выпадающий список в новые карточки
+                      const kanbanText = [].slice.call(
+                          document.querySelectorAll('.kanban-board[data-id=' + boardId + '] .kanban-text')
+                      );
+                      kanbanText.forEach(function (e) {
+                          e.insertAdjacentHTML('beforebegin', renderDropdown());
+                      });
+
+                      const elementToRemove = this.parentElement.parentElement;
+                      // Удаляем форму
+                      if (elementToRemove) {
+                          elementToRemove.remove();
+                      }
+                  })
+                  .catch(error => {
+                      console.error('There was a problem with the fetch operation:', error);
+                  });
 
               if (!response.ok) {
-                  throw new Error(`Ошибка: ${response.status}`);
+                  console.log(response)
               }
 
-              const result = response.json();
-              const currentBoard = [].slice.call(
-                  document.querySelectorAll('.kanban-board[data-id=' + boardId + '] .kanban-item')
-              );
-              kanban.addElement(boardId, {
-                  title: "<span class='kanban-text'>" + title + '</span>',
-                  id: boardId + '-' + currentBoard.length + 1
-              });
-
-              // add dropdown in new boards
-              const kanbanText = [].slice.call(
-                  document.querySelectorAll('.kanban-board[data-id=' + boardId + '] .kanban-text')
-              );
-              kanbanText.forEach(function (e) {
-                  e.insertAdjacentHTML('beforebegin', renderDropdown());
-              });
-
-              // prevent sidebar to open onclick dropdown buttons of new tasks
               const newTaskDropdown = [].slice.call(document.querySelectorAll('.kanban-item .kanban-tasks-item-dropdown'));
               if (newTaskDropdown) {
                   newTaskDropdown.forEach(function (e) {
@@ -398,8 +428,8 @@
               }
 
               // delete tasks for new boards
-              const deleteTask = [].slice.call(
-                  document.querySelectorAll('.kanban-board[data-id=' + boardId + '] .delete-task')
+              const deleteTaskButtons = document.querySelectorAll(
+                  `.kanban-board[data-id="${boardId}"] .delete-task`
               );
               deleteTask.forEach(function (e) {
                   e.addEventListener('click', function () {
@@ -409,14 +439,14 @@
               });
               addNew.remove();
 
+              // Remove form on clicking cancel button
+              addNew.querySelector('.cancel-add-item').addEventListener('click', function (e) {
+                  addNew.remove();
+              });
+
           } catch (error) {
               console.error('Ошибка при создании задачи:', error);
           }
-      });
-
-      // Remove form on clicking cancel button
-      addNew.querySelector('.cancel-add-item').addEventListener('click', function (e) {
-        addNew.remove();
       });
     }
   });
