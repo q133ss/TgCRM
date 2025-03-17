@@ -20,6 +20,7 @@ Route::post('/update/task/{id}', [\App\Http\Controllers\API\TaskController::clas
 Route::get('/get-column-id/{task_id}', [\App\Http\Controllers\API\TaskController::class, 'getColumnById']);
 Route::get('/get-first-column/{project_id}', [\App\Http\Controllers\API\TaskController::class, 'getFirstColumn']);
 Route::post('/activity', [\App\Http\Controllers\ActivityController::class, 'store']);
+Route::put('/task/{id}/move', [\App\Http\Controllers\API\TaskController::class, 'move']);
 
 // Задачи в календаре еще не добавлявляются и не обновляются
 # TODO url из webapp

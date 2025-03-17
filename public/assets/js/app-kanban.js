@@ -53,7 +53,6 @@
             throw new Error(`Ошибка: ${kanbanResponse.status}`);
         }
         boards = await kanbanResponse.json();
-        console.log('Данные задач:', boards);
     } catch (error) {
         console.error('Ошибка при загрузке данных:', error);
     }
@@ -137,7 +136,6 @@
             $('.kanban-update-item-sidebar').find(select2).val(label).trigger('change');
             // Обновляем участников
             kanbanSidebar.querySelector('.assigned').innerHTML = '';
-            console.log(avatars)
             kanbanSidebar
                 .querySelector('.assigned')
                 .insertAdjacentHTML(
@@ -369,7 +367,7 @@
         label = element.getAttribute('data-badge-text'),
         avatars = element.getAttribute('data-assigned');
         let description = element.getAttribute('data-description');
-        if(description == 'null'){
+        if(description === 'null'){
             description = '';
         }
         // Файлы
@@ -574,7 +572,47 @@
               console.error('Ошибка при создании задачи:', error);
           }
       });
-    }
+    },
+
+      dropEl: function(el, target, source, sibling) {
+          // 1. Получаем данные задачи и колонок
+          const taskId = el.getAttribute('data-eid');
+          const sourceColumnId = source.parentNode.dataset.id; // Исходная колонка
+          const targetColumnId = target.parentNode.dataset.id; // Целевая колонка
+
+          const targetNumber = targetColumnId.replace(/board-/g, '');
+
+          // 2. Получаем project_id и uid из URL
+          const path = window.location.pathname;
+          const match = path.match(/\/dashboard\/project\/(\d+)/);
+          const projectId = match ? match[1] : null;
+          const urlParams = new URLSearchParams(window.location.search);
+          const uid = urlParams.get('uid');
+
+          // 3. Формируем запрос
+          fetch(`/api/task/${taskId}/move?uid=${uid}`, {
+              method: 'PUT',
+              headers: {
+                  'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                  column_id: targetNumber,
+                  project_id: projectId
+              })
+          })
+              .then(response => {
+                  if (!response.ok) throw new Error('Ошибка перемещения');
+                  return response.json();
+              })
+              .then(data => {
+                  // Дополнительные действия при успехе
+              })
+              .catch(error => {
+                  console.error('Ошибка:', error);
+                  // Возвращаем задачу обратно при ошибке
+                  kanban.moveElement(taskId, sourceColumnId);
+              });
+      }
   });
 
   // Kanban Wrapper scrollbar
@@ -786,7 +824,6 @@
               if (actionText.length > 252) {
                   actionText = actionText.slice(0, 252) + "..";
               }
-              console.log(actionText.length)
               const activityData = {
                   action: actionText,
                   activitable_type: "App\\Models\\Task",

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\API\TaskController\StoreRequest;
+use App\Http\Requests\TaskController\MoveRequest;
 use App\Models\Column;
 use App\Models\File;
 use App\Models\Project;
@@ -91,7 +92,7 @@ class TaskController extends Controller
 
             // Добавляем колонку в выходной массив
             $formattedData[] = [
-                "id" => $columnId,
+                "id" => "board-".$columnId,
                 "title" => $columnTitle,
                 "item" => $items
             ];
@@ -333,5 +334,14 @@ class TaskController extends Controller
         return response()->json([
             'id' => $columnId
         ]);
+    }
+
+    public function move(MoveRequest $request, string $id)
+    {
+        $task = Task::find($id);
+        $task->update([
+            'column_id' => $request->column_id
+        ]);
+        return response()->json(['message' => 'true']);
     }
 }

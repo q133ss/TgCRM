@@ -252,10 +252,7 @@
     <script src="/assets/vendor/libs/jkanban/jkanban.js"></script>
     <script src="/assets/vendor/libs/quill/katex.js"></script>
     <script src="/assets/vendor/libs/quill/quill.js"></script>
-
-    <!-- Main JS -->
-    <script src="/assets/js/main.js"></script>
-
+    
     <!-- Page JS -->
     <script src="/assets/js/app-kanban.js"></script>
 @endsection
