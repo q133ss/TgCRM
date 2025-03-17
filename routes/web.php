@@ -28,5 +28,3 @@ Route::group(['prefix' => 'dashboard', 'as' => 'dashboard.'], function (){
     Route::get('/users', [\App\Http\Controllers\Dashboard\IndexController::class, 'index'])->name('users');
     Route::get('/faq', [\App\Http\Controllers\Dashboard\IndexController::class, 'index'])->name('faq');
 });
-
-# TODO добавить activity!

@@ -50,7 +50,7 @@
             <!-- Edit Task/Task & Activities -->
             <div class="offcanvas offcanvas-end kanban-update-item-sidebar">
                 <div class="offcanvas-header border-bottom">
-                    <h5 class="offcanvas-title">Edit Task</h5>
+                    <h5 class="offcanvas-title">Изменить задачу</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
                 </div>
                 <div class="offcanvas-body pt-2">
@@ -86,6 +86,14 @@
                                     <label class="form-label">Ответственные</label>
                                     <div class="assigned d-flex flex-wrap"></div>
                                 </div>
+                                <div class="md-5">
+                                    <select name="assigned" id="assigned" multiple class="form-select">
+                                        <option value="1" selected>Alexey</option>
+                                        <option value="2">Ivan</option>
+                                        <option value="3">Sergey</option>
+                                        <option value="4">Alex</option>
+                                    </select>
+                                </div>
                                 <div class="mb-5">
                                     <label class="form-label" for="attachments">Вложения</label>
                                     <div>
@@ -95,14 +103,14 @@
                                 </div>
                                 <div class="mb-5">
                                     <label class="form-label">Описание</label>
-                                    <textarea name="description" class="form-control" id="description" cols="15" rows="3"></textarea>
+                                    <textarea name="description" class="form-control taskDescriptionTextArea" id="description" cols="15" rows="3"></textarea>
                                 </div>
                                 <div>
                                     <div class="d-flex flex-wrap">
-                                        <button type="button" class="btn btn-primary me-4" data-bs-dismiss="offcanvas">
+                                        <button type="button" class="btn btn-primary me-4" data-id="" id="updateTask" data-bs-dismiss="offcanvas">
                                             Обновить
                                         </button>
-                                        <button type="button" class="btn btn-outline-danger" data-bs-dismiss="offcanvas">
+                                        <button type="button" class="btn btn-outline-danger" data-id="" id="deleteTask" data-bs-dismiss="offcanvas">
                                             Удалить
                                         </button>
                                     </div>

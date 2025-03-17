@@ -39,59 +39,60 @@ class TaskController extends Controller
 
     public function tasksForProject(string $id)
     {
-        // Получаем задачи с присоединенной информацией о колонках
-        $tasks = Task::leftJoin('columns', 'tasks.column_id', '=', 'columns.id')
-            ->where('columns.project_id', $id)
+        // Получаем колонки с присоединенными задачами
+        $columns = Column::where('project_id', $id)
+            ->leftJoin('tasks', 'columns.id', '=', 'tasks.column_id')
             ->select(
+                'columns.id as column_id',
+                'columns.title as column_title',
                 'tasks.id as task_id',
                 'tasks.title as task_title',
                 'tasks.date',
                 'tasks.time',
-                'tasks.description',
-                'columns.id as column_id',
-                'columns.title as column_title',
+                'tasks.description'
             )
             ->get();
 
-        // Группируем задачи по column_id
-        $groupedTasks = $tasks->groupBy('column_id');
+        // Группируем данные по column_id
+        $groupedData = $columns->groupBy('column_id');
 
         // Формируем выходной массив
         $formattedData = [];
-        foreach ($groupedTasks as $columnId => $tasksInColumn) {
+        foreach ($groupedData as $columnId => $columnData) {
             // Название колонки берем из первого элемента группы
-            $columnTitle = $tasksInColumn->first()->column_title ?? 'No Title';
+            $columnTitle = $columnData->first()->column_title ?? 'No Title';
 
             // Формируем массив задач для текущей колонки
             $items = [];
-            // В $tasksInColumn нет description
-            foreach ($tasksInColumn as $task) {
-                # TODO исправить!!!!
-                $modelTask = Task::where('tasks.id',$task->task_id)->first();
-                $responsibleNames = $modelTask?->responsible?->pluck('first_name');
-                $allFiles = $modelTask->files;
-                $files = $allFiles?->pluck('src')->all();
-                $filesCount = $allFiles?->count();
+            foreach ($columnData as $task) {
+                if ($task->task_id) {
+                    // Если задача существует, добавляем её в массив
+                    $modelTask = Task::where('tasks.id', $task->task_id)->first();
+                    $responsibleNames = $modelTask?->responsible?->pluck('first_name');
+                    $allFiles = $modelTask->files;
+                    $files = $allFiles?->pluck('src')->all();
+                    $filesCount = $allFiles?->count();
 
-                $items[] = [
-                    "id" => "task-" . $task->task_id,
-                    "title" => $task->task_title, // Используем название задачи
-                    "comments" => "0", // Заглушка
-                    "description" => $task->description,
-                    "badge-text" => "Без категории", // Заглушка
-                    "badge" => "primary", // Заглушка
-                    "due-date" => $task->date ? Carbon::parse($task->date)->format('j F') : 'No Date', // Форматируем дату
-                    "attachments" => $filesCount,
-                    "assigned" => $responsibleNames, // Заглушка
-                    "members" => $responsibleNames,
-                    "files" => $files
-                ];
+                    $items[] = [
+                        "id" => $task->task_id,
+                        "title" => $task->task_title,
+                        "comments" => "0",
+                        "description" => $task->description,
+                        "badge-text" => "Без категории",
+                        "badge" => "primary",
+                        "due-date" => $task->date ? Carbon::parse($task->date)->format('j F') : 'No Date',
+                        "attachments" => $filesCount,
+                        "assigned" => $responsibleNames,
+                        "members" => $responsibleNames,
+                        "files" => $files
+                    ];
+                }
             }
 
             // Добавляем колонку в выходной массив
             $formattedData[] = [
                 "id" => $columnId,
-                "title" => $columnTitle, // Название колонки
+                "title" => $columnTitle,
                 "item" => $items
             ];
         }
@@ -99,6 +100,69 @@ class TaskController extends Controller
         // Возвращаем данные в формате JSON
         return response()->json($formattedData);
     }
+
+//    public function tasksForProject(string $id)
+//    {
+//        // Получаем задачи с присоединенной информацией о колонках
+//        $tasks = Task::leftJoin('columns', 'tasks.column_id', '=', 'columns.id')
+//            ->where('columns.project_id', $id)
+//            ->select(
+//                'tasks.id as task_id',
+//                'tasks.title as task_title',
+//                'tasks.date',
+//                'tasks.time',
+//                'tasks.description',
+//                'columns.id as column_id',
+//                'columns.title as column_title',
+//            )
+//            ->get();
+//
+//        // Группируем задачи по column_id
+//        $groupedTasks = $tasks->groupBy('column_id');
+//
+//        // Формируем выходной массив
+//        $formattedData = [];
+//        foreach ($groupedTasks as $columnId => $tasksInColumn) {
+//            // Название колонки берем из первого элемента группы
+//            $columnTitle = $tasksInColumn->first()->column_title ?? 'No Title';
+//
+//            // Формируем массив задач для текущей колонки
+//            $items = [];
+//            // В $tasksInColumn нет description
+//            foreach ($tasksInColumn as $task) {
+//                # TODO исправить!!!!
+//                $modelTask = Task::where('tasks.id',$task->task_id)->first();
+//                $responsibleNames = $modelTask?->responsible?->pluck('first_name');
+//                $allFiles = $modelTask->files;
+//                $files = $allFiles?->pluck('src')->all();
+//                $filesCount = $allFiles?->count();
+//
+//                $items[] = [
+//                    "id" => "task-" . $task->task_id,
+//                    "title" => $task->task_title, // Используем название задачи
+//                    "comments" => "0", // Заглушка
+//                    "description" => $task->description,
+//                    "badge-text" => "Без категории", // Заглушка
+//                    "badge" => "primary", // Заглушка
+//                    "due-date" => $task->date ? Carbon::parse($task->date)->format('j F') : 'No Date', // Форматируем дату
+//                    "attachments" => $filesCount,
+//                    "assigned" => $responsibleNames, // Заглушка
+//                    "members" => $responsibleNames,
+//                    "files" => $files
+//                ];
+//            }
+//
+//            // Добавляем колонку в выходной массив
+//            $formattedData[] = [
+//                "id" => $columnId,
+//                "title" => $columnTitle, // Название колонки
+//                "item" => $items
+//            ];
+//        }
+//
+//        // Возвращаем данные в формате JSON
+//        return response()->json($formattedData);
+//    }
 
     public function store(StoreRequest $request)
     {

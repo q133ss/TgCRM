@@ -14,7 +14,9 @@
     kanbanAddBoardBtn = document.querySelector('.kanban-add-board-btn'),
     datePicker = document.querySelector('#due-date'),
     select2 = $('.select2'), // ! Using jquery vars due to select2 jQuery dependency
-    assetsPath = document.querySelector('html').getAttribute('data-assets-path');
+    assetsPath = document.querySelector('html').getAttribute('data-assets-path'),
+    updateTaskButton = document.querySelector('#updateTask'),
+    deleteTaskButton = document.querySelector('#deleteTask');
 
   // Init kanban Offcanvas
   const kanbanOffcanvas = new bootstrap.Offcanvas(kanbanSidebar);
@@ -70,6 +72,135 @@
       dateFormat: 'Y-m-d'
     });
   }
+
+  // Показываем задачу, если ее указали в url
+    // Функция для получения параметров из URL
+    function getUrlParameter(name) {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get(name);
+    }
+
+    // Функция для открытия модального окна с данными задачи
+    async function openTaskModal(taskId) {
+        try {
+            // Делаем GET-запрос к API для получения данных задачи
+            const urlParams = new URLSearchParams(window.location.search);
+            const uid = urlParams.get('uid');
+
+            const response = await fetch(`/api/task/${taskId}?uid=${uid}`);
+            if (!response.ok) {
+                throw new Error('Ошибка при получении данных задачи');
+            }
+            const task = await response.json();
+
+            // Заполняем модальное окно данными задачи
+            const title = task.title || '';
+            const date = task.date ? formatDate(task.date) : null;
+            const description = task.description || '';
+            const label = task.label || '';
+            const avatars = task.responsible.map(user => user.first_name).join(', ');
+            //const files = task.files.map(file => file.src).join(',');
+            const files = task.files
+                .filter(file => file.src) // Оставляем только объекты с полем src
+                .map(file => file.src)   // Получаем значения src
+                .join(',');
+
+            // Открываем модальное окно
+            kanbanOffcanvas.show();
+
+            // Заполняем поля формы
+            kanbanSidebar.querySelector('#title').value = title;
+            kanbanSidebar.querySelector('#due-date').nextSibling.value = date;
+            kanbanSidebar.querySelector('#description').value = description;
+
+            document.querySelector('#updateTask').setAttribute('data-id', task.id)
+            document.querySelector('#deleteTask').setAttribute('data-id', task.id)
+
+            // Обрабатываем файлы
+            const filesDiv = document.querySelector('#files');
+            filesDiv.innerHTML = ''; // Очищаем предыдущие файлы
+
+            if (files) {
+                const fileArray = files.split(',');
+                fileArray.forEach(file => {
+                    const trimmedFile = file.trim();
+                    if (/\.(jpg|jpeg|png|gif)$/i.test(trimmedFile)) {
+                        const link = createImageLink(trimmedFile);
+                        filesDiv.appendChild(link);
+                    } else {
+                        const link = createDocumentLink(trimmedFile);
+                        filesDiv.appendChild(link);
+                    }
+                });
+            }
+            // Обновляем метку
+            $('.kanban-update-item-sidebar').find(select2).val(label).trigger('change');
+            // Обновляем участников
+            kanbanSidebar.querySelector('.assigned').innerHTML = '';
+            console.log(avatars)
+            kanbanSidebar
+                .querySelector('.assigned')
+                .insertAdjacentHTML(
+                    'afterbegin',
+                    renderAvatar(avatars, false, 'sm', '2', avatars)
+                );
+
+        } catch (error) {
+            console.error('Ошибка:', error.message);
+        }
+    }
+
+    // Форматируем дату
+    function formatDate(dateString) {
+        const date = new Date(dateString);
+        return `${date.getDate()} ${date.toLocaleString('en', { month: 'long' })}, ${date.getFullYear()}`;
+    }
+
+    // Получаем текущую дату
+    function getCurrentDate() {
+        const today = new Date();
+        return `${today.getDate()} ${today.toLocaleString('en', { month: 'long' })}, ${today.getFullYear()}`;
+    }
+
+    // Создаем ссылку для изображения
+    function createImageLink(src) {
+        const link = document.createElement('a');
+        link.href = src;
+        link.target = '_blank';
+        link.style.display = 'inline-block';
+        link.style.margin = '5px';
+
+        const img = document.createElement('img');
+        img.src = src;
+        img.style.maxWidth = '100px';
+        img.style.cursor = 'pointer';
+
+        link.appendChild(img);
+        return link;
+    }
+
+    // Создаем ссылку для документа
+    function createDocumentLink(href) {
+        const link = document.createElement('a');
+        link.href = href;
+        link.target = '_blank';
+        link.textContent = 'Document';
+        link.style.display = 'block';
+        link.style.margin = '5px';
+
+        const icon = document.createElement('i');
+        icon.className = 'fas fa-file-alt';
+        icon.style.marginRight = '5px';
+
+        link.prepend(icon);
+        return link;
+    }
+
+    // Проверяем, есть ли параметр task в URL
+    const taskId = getUrlParameter('task');
+    if (taskId) {
+        await openTaskModal(taskId);
+    }
 
   //! TODO: Update Event label and guest code to JS once select removes jQuery dependency
   // select2
@@ -246,6 +377,10 @@
         // Находим div, куда будем выводить файлы
         let filesDiv = document.querySelector('#files');
 
+        let taskID = element.getAttribute('data-eid');
+        document.querySelector('#updateTask').setAttribute('data-id', taskID)
+        document.querySelector('#deleteTask').setAttribute('data-id', taskID)
+
         if (files) {
             // Разделяем строку на массив путей к файлам
             let fileArray = files.split(',');
@@ -276,7 +411,7 @@
                     let link = document.createElement('a');
                     link.href = file.trim(); // Убираем лишние пробелы
                     link.target = '_blank'; // Открываем ссылку в новой вкладке
-                    link.textContent = 'Document'; // Текст ссылки
+                    link.textContent = 'Документ'; // Текст ссылки
                     link.style.display = 'block'; // Делаем ссылку блочным элементом
                     link.style.margin = '5px'; // Опционально: добавляем отступы
 
@@ -326,6 +461,13 @@
         '</div>';
       kanban.addForm(boardId, addNew);
 
+        // Находим кнопку "Закрыть" и добавляем обработчик события
+        const cancelButton = addNew.querySelector('.cancel-add-item');
+        cancelButton.addEventListener('click', function () {
+            // Удаляем родительский элемент формы
+            addNew.remove();
+        });
+
       addNew.addEventListener('submit', function (e) {
         e.preventDefault();
 
@@ -361,25 +503,6 @@
                       'Content-Type': 'application/json',
                   },
                   body: JSON.stringify(data),
-                  // success: () => {
-                  //     alert(111)
-                  //     const result = response;
-                  //     const currentBoard = [].slice.call(
-                  //         document.querySelectorAll('.kanban-board[data-id=' + boardId + '] .kanban-item')
-                  //     );
-                  //     kanban.addElement(boardId, {
-                  //         title: "<span class='kanban-text'>" + title + '</span>',
-                  //         id: boardId + '-' + currentBoard.length + 1
-                  //     });
-                  //
-                  //     // add dropdown in new boards
-                  //     const kanbanText = [].slice.call(
-                  //         document.querySelectorAll('.kanban-board[data-id=' + boardId + '] .kanban-text')
-                  //     );
-                  //     kanbanText.forEach(function (e) {
-                  //         e.insertAdjacentHTML('beforebegin', renderDropdown());
-                  //     });
-                  // }
               }).then(response => {
                   if (!response.ok) {
                       throw new Error('Network response was not ok');
@@ -398,17 +521,20 @@
 
                       // Добавляем выпадающий список в новые карточки
                       const kanbanText = [].slice.call(
-                          document.querySelectorAll('.kanban-board[data-id=' + boardId + '] .kanban-text')
+                          document.querySelectorAll(`.kanban-board[data-id="${boardId}"] .kanban-text`)
                       );
                       kanbanText.forEach(function (e) {
                           e.insertAdjacentHTML('beforebegin', renderDropdown());
                       });
+
+                      activity(result.task.title, result.task.id);
 
                       const elementToRemove = this.parentElement.parentElement;
                       // Удаляем форму
                       if (elementToRemove) {
                           elementToRemove.remove();
                       }
+
                   })
                   .catch(error => {
                       console.error('There was a problem with the fetch operation:', error);
@@ -624,7 +750,8 @@
 
   // Clear comment editor on close
   kanbanSidebar.addEventListener('hidden.bs.offcanvas', function () {
-    kanbanSidebar.querySelector('.ql-editor').firstElementChild.innerHTML = '';
+    //kanbanSidebar.querySelector('.ql-editor').firstElementChild.innerHTML = '';
+    document.querySelector('.taskDescriptionTextArea').firstElementChild.innerHTML = '';
   });
 
   // Re-init tooltip when offcanvas opens(Bootstrap bug)
@@ -636,4 +763,116 @@
       });
     });
   }
+
+  function activity(text, task_id){
+      // Создаем активность
+      const urlParams = new URLSearchParams(window.location.search);
+      const uid = urlParams.get('uid');
+      fetch('/api/me?uid='+uid, {
+          method: 'GET',
+          headers: {
+              'Content-Type': 'application/json',
+          }
+      })
+          .then(response => {
+              if (!response.ok) {
+                  throw new Error('Ошибка при получении данных пользователя');
+              }
+              return response.json();
+          })
+          .then(me => {
+              // Второй запрос: POST /api/activity
+              let actionText = "Пользователь " + me.username + " создал задачу: " + text;
+              if (actionText.length > 252) {
+                  actionText = actionText.slice(0, 252) + "..";
+              }
+              console.log(actionText.length)
+              const activityData = {
+                  action: actionText,
+                  activitable_type: "App\\Models\\Task",
+                  activitable_id: task_id
+              };
+
+              return fetch('/api/activity?uid='+uid, {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify(activityData)
+              });
+          })
+          .then(response => {
+              if (!response.ok) {
+                  throw new Error('Ошибка при отправке активности');
+              }
+              return response.json(); // Парсим ответ второго запроса
+          })
+
+          .catch(error => {
+              console.error('Произошла ошибка:', error.message);
+          });
+  }
+
+    updateTaskButton.addEventListener('click', function () {
+        let taskID = this.getAttribute('data-id');
+
+        let title = kanbanSidebar.querySelector('#title').value;
+        let date = kanbanSidebar.querySelector('#due-date').nextSibling.value;
+        let description = kanbanSidebar.querySelector('#description').value;
+        let attachments = kanbanSidebar.querySelector('#attachments').value;
+
+        // TODO ОТВЕТСВЕННЫЕ!!!!!!
+
+        //activity(result.task.title, result.task.id);
+    });
+
+    deleteTaskButton.addEventListener('click', function () {
+        let taskID = this.getAttribute('data-id');
+    });
+
+    // Отображение ответсвенных из Select
+        const selectElement = document.getElementById('assigned');
+        const assignedContainer = document.querySelector('.assigned');
+
+        // Функция для создания аватара
+        function createAvatar(value, text) {
+            const firstLetter = text.charAt(0).toUpperCase(); // Первая буква имени
+            const avatarDiv = document.createElement('div');
+            avatarDiv.className = 'avatar avatar-sm me-2';
+            avatarDiv.setAttribute('data-bs-toggle', 'tooltip');
+            avatarDiv.setAttribute('data-bs-placement', 'top');
+            avatarDiv.setAttribute('data-bs-original-title', text);
+
+            const span = document.createElement('span');
+            span.className = 'avatar-initial rounded-circle bg-primary';
+            span.textContent = firstLetter;
+
+            avatarDiv.appendChild(span);
+            return avatarDiv;
+        }
+
+        // Функция для обновления блока .assigned
+        function updateAssigned() {
+            // Очищаем контейнер
+            assignedContainer.innerHTML = '';
+
+            // Получаем выбранные опции
+            const selectedOptions = Array.from(selectElement.selectedOptions);
+
+            // Создаем аватары для выбранных опций
+            selectedOptions.forEach(option => {
+                const value = option.value;
+                const text = option.textContent.trim();
+                const avatar = createAvatar(value, text);
+                assignedContainer.appendChild(avatar);
+            });
+
+            // Инициализируем тултипы
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+        }
+        // Слушаем событие изменения в select
+        selectElement.addEventListener('change', updateAssigned);
+        // Инициализация при загрузке страницы (если есть выбранные элементы)
+        updateAssigned();
 })();

@@ -3,9 +3,9 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/user', function (Request $request) {
-    return $request->user();
-})->middleware('auth:sanctum');
+Route::get('/me', function (Request $request) {
+    return \App\Models\User::where('telegram_id', $request->uid)->first();
+});
 
 Route::post('/telegram/webhook', [\App\Http\Controllers\TelegramController::class, 'handle']);
 
@@ -19,6 +19,7 @@ Route::patch('/task/{id}', [\App\Http\Controllers\API\TaskController::class, 'up
 Route::post('/update/task/{id}', [\App\Http\Controllers\API\TaskController::class, 'update']);
 Route::get('/get-column-id/{task_id}', [\App\Http\Controllers\API\TaskController::class, 'getColumnById']);
 Route::get('/get-first-column/{project_id}', [\App\Http\Controllers\API\TaskController::class, 'getFirstColumn']);
+Route::post('/activity', [\App\Http\Controllers\ActivityController::class, 'store']);
 
 // Задачи в календаре еще не добавлявляются и не обновляются
 # TODO url из webapp
