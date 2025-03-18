@@ -61,4 +61,12 @@ class StoreRequest extends FormRequest
             'responsible.*.exists' => 'Указанный ответственный не существует'
         ];
     }
+
+    protected function failedValidation(Validator $validator)
+    {
+        // Записываем ошибки в лог
+        \Log::error('Ошибка валидации в StoreRequest', [
+            'errors' => $validator->errors()->toArray()
+        ]);
+    }
 }

@@ -21,6 +21,9 @@
   // Init kanban Offcanvas
   const kanbanOffcanvas = new bootstrap.Offcanvas(kanbanSidebar);
 
+  const urlParams = new URLSearchParams(window.location.search);
+  const uid = urlParams.get('uid');
+
   // Get kanban data
   // const kanbanResponse = await fetch(assetsPath + 'json/kanban.json');
     try {
@@ -33,10 +36,6 @@
             console.error('ID проекта не найден в URL');
             return;
         }
-
-        // Извлекаем UID из строки запроса
-        const urlParams = new URLSearchParams(window.location.search);
-        const uid = urlParams.get('uid'); // uid = "461612832"
 
         // Формируем URL для запроса
         let apiUrl = `/api/task/project/${projectId}`;
@@ -82,10 +81,6 @@
     // Функция для открытия модального окна с данными задачи
     async function openTaskModal(taskId) {
         try {
-            // Делаем GET-запрос к API для получения данных задачи
-            const urlParams = new URLSearchParams(window.location.search);
-            const uid = urlParams.get('uid');
-
             const response = await fetch(`/api/task/${taskId}?uid=${uid}`);
             if (!response.ok) {
                 throw new Error('Ошибка при получении данных задачи');
@@ -149,10 +144,6 @@
 
                             if (confirmed) {
                                 try {
-                                    // Отправляем AJAX-запрос на удаление файла
-                                    const urlParams = new URLSearchParams(window.location.search);
-                                    const uid = urlParams.get('uid');
-
                                     const response = await fetch(`/api/file/${fileId}?uid=${uid}`, {
                                         method: 'DELETE',
                                     });
@@ -427,15 +418,6 @@
         let filesDiv = document.querySelector('#files');
 
         let taskID = element.getAttribute('data-eid');
-
-        ///
-        // Загрузка ответственных
-        // const responsibles = loadResponsibles();
-        // populateSelect(responsibles);
-        // const selectElement = document.querySelector('#assignedSelect');
-        // const membersString = el.getAttribute('data-members');
-        // selectAssignedMembers(selectElement, membersString);
-
         loadResponsibles()
             .then(responsibles => {
                 // Заполняем select
@@ -449,7 +431,6 @@
             .catch(error => {
                 console.error('Ошибка при загрузке ответственных:', error.message);
             });
-        ///
 
         document.querySelector('#updateTask').setAttribute('data-id', taskID)
         document.querySelector('#deleteTask').setAttribute('data-id', taskID)
@@ -519,6 +500,50 @@
           'afterbegin',
           renderAvatar(avatars, false, 'sm', '2', el.getAttribute('data-members'))
         );
+
+      // Load activity
+
+        fetch(`/api/task/${taskID}/activity?uid=${uid}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Ошибка HTTP: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(activities => {
+                // Находим контейнер для активности
+                const activityContainer = document.querySelector('#tab-activity');
+                activityContainer.innerHTML = ''; // Очищаем предыдущее содержимое
+
+                // Проходим по каждому элементу активности
+                activities.forEach(activity => {
+                    // Создаем HTML-структуру для одной записи активности
+                    const activityHTML = `
+                    <div class="media mb-4 d-flex align-items-center">
+                        <div class="avatar me-3 flex-shrink-0">
+                            <a href="/dashboard/users/${activity.user.id}">
+                                <span class="avatar-initial bg-label-success rounded-circle">${getInitials(activity.user)}</span>
+                            </a>
+                        </div>
+                        <div class="media-body ms-1">
+                            <p class="mb-0">
+                                <a href="/dashboard/task/${activity.activitable_id}">
+                                    <span>${activity.user.first_name || activity.user.username}</span> ${activity.action}
+                                </a>
+                            </p>
+                            <small class="text-muted">${formatDate(activity.created_at)}</small>
+                        </div>
+                    </div>
+                `;
+
+                    // Добавляем запись в контейнер
+                    activityContainer.insertAdjacentHTML('beforeend', activityHTML);
+                });
+            })
+            .catch(error => {
+                console.error('Ошибка при загрузке активности:', error.message);
+            });
+        /////////////
     },
 
     buttonClick: function (el, boardId) {
@@ -550,9 +575,6 @@
               const match = path.match(/\/dashboard\/project\/(\d+)/);
               const projectId = match ? match[1] : null;
 
-              const urlParams = new URLSearchParams(window.location.search);
-              const uid = urlParams.get('uid'); // uid = "461612832"
-
               // Формируем URL для запроса
               let apiUrl = `/api/task?uid=${uid}`;
 
@@ -565,7 +587,7 @@
               // Формируем тело запроса
               const data = {
                   project_id: projectId,
-                  column_id: boardId,
+                  column_id: boardId.replace("board-", ""),
                   title: title
               };
 
@@ -600,7 +622,7 @@
                           e.insertAdjacentHTML('beforebegin', renderDropdown());
                       });
 
-                      activity(result.task.title, result.task.id);
+                      activity("создал задачу '"+result.task.title+"'", result.task.id);
 
                       const elementToRemove = this.parentElement.parentElement;
                       // Удаляем форму
@@ -661,8 +683,6 @@
           const path = window.location.pathname;
           const match = path.match(/\/dashboard\/project\/(\d+)/);
           const projectId = match ? match[1] : null;
-          const urlParams = new URLSearchParams(window.location.search);
-          const uid = urlParams.get('uid');
 
           // 3. Формируем запрос
           fetch(`/api/task/${taskId}/move?uid=${uid}`, {
@@ -681,6 +701,7 @@
               })
               .then(data => {
                   // Дополнительные действия при успехе
+                  activity('переместил задачу в колонку #'+targetNumber,taskId);
               })
               .catch(error => {
                   console.error('Ошибка:', error);
@@ -877,10 +898,27 @@
     });
   }
 
+    // Функция для получения инициалов пользователя
+    function getInitials(user) {
+        const name = user.first_name || user.username;
+        return name.charAt(0).toUpperCase(); // Первая буква имени или username
+    }
+
+// Функция для форматирования даты
+    function formatDate(dateString) {
+        const date = new Date(dateString);
+        const today = new Date();
+        const isToday = date.getDate() === today.getDate() &&
+            date.getMonth() === today.getMonth() &&
+            date.getFullYear() === today.getFullYear();
+
+        const formattedTime = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
+
+        return isToday ? `Today ${formattedTime}` : `${date.toLocaleDateString()} ${formattedTime}`;
+    }
+
   function activity(text, task_id){
       // Создаем активность
-      const urlParams = new URLSearchParams(window.location.search);
-      const uid = urlParams.get('uid');
       fetch('/api/me?uid='+uid, {
           method: 'GET',
           headers: {
@@ -895,7 +933,7 @@
           })
           .then(me => {
               // Второй запрос: POST /api/activity
-              let actionText = "Пользователь " + me.username + " создал задачу: " + text;
+              let actionText = "Пользователь " + me.username + " "+text;
               if (actionText.length > 252) {
                   actionText = actionText.slice(0, 252) + "..";
               }
@@ -968,9 +1006,6 @@
             formData.append('files[]', attachments[i]); // 'attachments[]' для массива файлов
         }
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const uid = urlParams.get('uid');
-
         fetch(`/api/get-column-id/${taskID}?uid=${uid}`)
             .then(response => {
                 if (!response.ok) {
@@ -1001,7 +1036,15 @@
                         return response.json();
                     })
                     .then(data => {
-                        console.log('Задача успешно обновлена:', data);
+                        // Переименовать!
+                        const element = document.querySelector('.kanban-drag div[data-eid="'+data.task.id+'"]');
+                        if (element) {
+                            const spanElement = element.querySelector('span.kanban-text');
+                            if (spanElement) {
+                                spanElement.textContent = data.task.title;
+                            }
+                        }
+                        activity("обновил задачу "+data.task.title, data.task.id);
                     })
                     .catch(error => {
                         console.error('Ошибка при отправке данных:', error);
@@ -1010,12 +1053,32 @@
             .catch(error => {
                 console.error('Ошибка при отправке данных:', error);
             });
-
-        //activity(result.task.title, result.task.id);
     });
 
     deleteTaskButton.addEventListener('click', function () {
         let taskID = this.getAttribute('data-id');
+        fetch(`/api/task/${taskID}?uid=${uid}`, {
+            method: 'DELETE',
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Ошибка HTTP: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                const elementToRemove = document.querySelector('.kanban-drag div[data-eid="'+data.id+'"]');
+                // Если элемент найден, удаляем его
+                if (elementToRemove) {
+                    elementToRemove.remove();
+                } else {
+                    console.log('Элемент не найден');
+                }
+                activity("удалил задачу #"+data.id, data.id);
+            })
+            .catch(error => {
+                console.error('Ошибка при отправке данных:', error);
+            });
     });
 
     // Отображение ответсвенных из Select
@@ -1076,9 +1139,6 @@
                 return;
             }
 
-            const urlParams = new URLSearchParams(window.location.search);
-            const uid = urlParams.get('uid'); // uid = "461612832"
-
             return fetch(`/api/project/${projectId}/responsible?uid=${uid}`)
                 .then(response => {
                     // Проверяем статус ответа
@@ -1124,5 +1184,4 @@
                 }
             });
         }
-
 })();

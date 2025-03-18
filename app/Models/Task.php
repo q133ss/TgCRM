@@ -23,4 +23,9 @@ class Task extends Model
     {
         return $this->belongsToMany(User::class, 'task_responsibles');
     }
+
+    public function activity(): \Illuminate\Database\Eloquent\Relations\MorphMany
+    {
+        return $this->morphMany(Activity::class, 'activitable');
+    }
 }

@@ -24,10 +24,9 @@ Route::post('/activity', [\App\Http\Controllers\ActivityController::class, 'stor
 Route::put('/task/{id}/move', [\App\Http\Controllers\API\TaskController::class, 'move']);
 Route::delete('/file/{id}', [\App\Http\Controllers\API\FileController::class, 'delete']);
 Route::get('/project/{id}/responsible', [\App\Http\Controllers\API\TaskController::class, 'responsibleForProject']);
+Route::get('/task/{id}/activity', [\App\Http\Controllers\API\TaskController::class, 'activity']);
 
 // Kanban
-// TODO : Удаление задач
-// TODO : Отображение активности по задачи
 // TODO : Добавить колонку
 // TODO : Удалить/Переименовать колонку
 // TODO : Переместить колонку

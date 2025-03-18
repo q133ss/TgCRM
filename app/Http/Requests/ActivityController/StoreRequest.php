@@ -30,11 +30,8 @@ class StoreRequest extends FormRequest
     protected function failedValidation(Validator $validator)
     {
         // Записываем ошибки в лог
-        Log::error('Ошибка валидации в StoreRequest', [
+        \Log::error('Ошибка валидации в StoreRequest', [
             'errors' => $validator->errors()->toArray()
         ]);
-
-        // Вызываем стандартное поведение (выброс исключения)
-        throw new ValidationException($validator);
     }
 }

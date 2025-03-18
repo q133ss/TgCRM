@@ -255,7 +255,8 @@ class TaskController extends Controller
 
     public function delete(string $id)
     {
-        return Task::findOrFail($id)->delete();
+        Task::findOrFail($id)->delete();
+        return response()->json(['id' => $id]);
     }
 
     public function getColumnById(string $id)
@@ -343,5 +344,10 @@ class TaskController extends Controller
     public function responsibleForProject(string $id)
     {
         return Project::findOrFail($id)->members;
+    }
+
+    public function activity(string $id)
+    {
+        return Task::findOrFail($id)->activity;
     }
 }
