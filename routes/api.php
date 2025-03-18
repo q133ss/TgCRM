@@ -23,9 +23,9 @@ Route::get('/get-first-column/{project_id}', [\App\Http\Controllers\API\TaskCont
 Route::post('/activity', [\App\Http\Controllers\ActivityController::class, 'store']);
 Route::put('/task/{id}/move', [\App\Http\Controllers\API\TaskController::class, 'move']);
 Route::delete('/file/{id}', [\App\Http\Controllers\API\FileController::class, 'delete']);
+Route::get('/project/{id}/responsible', [\App\Http\Controllers\API\TaskController::class, 'responsibleForProject']);
 
 // Kanban
-// TODO : Обновление задач
 // TODO : Удаление задач
 // TODO : Отображение активности по задачи
 // TODO : Добавить колонку

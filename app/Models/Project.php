@@ -8,13 +8,13 @@ class Project extends Model
 {
     protected $guarded = [];
 
-    public function columns()
+    public function columns(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(Column::class, 'project_id', 'id')->orderBy('order');
     }
 
-    public function members()
+    public function members(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
-        return $this->belongsToMany(Project::class, 'project_users');
+        return $this->belongsToMany(User::class, 'project_users');
     }
 }

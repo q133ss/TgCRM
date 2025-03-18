@@ -308,9 +308,9 @@ class TaskController extends Controller
         \Log::info($data);
         $updated = $task->update($data);
 
-        if(isset($data['responsible'])) {
+        if(isset($request->responsible)) {
             DB::table('task_responsibles')->where(['task_id' => $task->id])->delete();
-            foreach ($data['responsible'] as $responsible) {
+            foreach ($request->responsible as $responsible) {
                 DB::table('task_responsibles')->insert([
                     'task_id' => $task->id,
                     'user_id' => $responsible,
@@ -338,5 +338,10 @@ class TaskController extends Controller
         }
 
         return response()->json(['task' => $task], 200);
+    }
+
+    public function responsibleForProject(string $id)
+    {
+        return Project::findOrFail($id)->members;
     }
 }

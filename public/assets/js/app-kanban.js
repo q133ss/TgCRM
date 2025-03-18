@@ -427,6 +427,30 @@
         let filesDiv = document.querySelector('#files');
 
         let taskID = element.getAttribute('data-eid');
+
+        ///
+        // Загрузка ответственных
+        // const responsibles = loadResponsibles();
+        // populateSelect(responsibles);
+        // const selectElement = document.querySelector('#assignedSelect');
+        // const membersString = el.getAttribute('data-members');
+        // selectAssignedMembers(selectElement, membersString);
+
+        loadResponsibles()
+            .then(responsibles => {
+                // Заполняем select
+                populateSelect(responsibles);
+
+                // Выбираем ответственных
+                const selectElement = document.querySelector('#assignedSelect');
+                const membersString = el.getAttribute('data-members');
+                selectAssignedMembers(selectElement, membersString);
+            })
+            .catch(error => {
+                console.error('Ошибка при загрузке ответственных:', error.message);
+            });
+        ///
+
         document.querySelector('#updateTask').setAttribute('data-id', taskID)
         document.querySelector('#deleteTask').setAttribute('data-id', taskID)
 
@@ -919,12 +943,12 @@
         let title = kanbanSidebar.querySelector('#title').value;
         let rawDate = kanbanSidebar.querySelector('#due-date').nextSibling.value;
         let description = kanbanSidebar.querySelector('#description').value;
-        let assigned = kanbanSidebar.querySelector('#assigned').value;
+        //let assigned = kanbanSidebar.querySelector('#assignedSelect').value;
+        let assignedSelect = kanbanSidebar.querySelector('#assignedSelect');
+        let assignedValues = Array.from(assignedSelect.selectedOptions).map(option => option.value);
 
         let attachmentsInput = kanbanSidebar.querySelector('#attachments');
         let attachments = attachmentsInput.files;
-
-        // TODO ОТВЕТСВЕННЫЕ!!!!!!
         let formData = new FormData();
         let formattedDate = formatDate(rawDate);
 
@@ -935,7 +959,9 @@
         formData.append('title', title);
         formData.append('date', formattedDate);
         formData.append('description', description);
-        formData.append('responsible[]', assigned);
+        assignedValues.forEach(value => {
+            formData.append('responsible[]', value);
+        });
 
         // Добавление файлов
         for (let i = 0; i < attachments.length; i++) {
@@ -1037,4 +1063,66 @@
         selectElement.addEventListener('change', updateAssigned);
         // Инициализация при загрузке страницы (если есть выбранные элементы)
         updateAssigned();
+
+
+        // Подгружаем ответсвенных
+        function loadResponsibles() {
+            const path = window.location.pathname;
+            const match = path.match(/\/dashboard\/project\/(\d+)/);
+            const projectId = match ? match[1] : null;
+
+            if (!projectId) {
+                console.error('ID проекта не найден в URL');
+                return;
+            }
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const uid = urlParams.get('uid'); // uid = "461612832"
+
+            return fetch(`/api/project/${projectId}/responsible?uid=${uid}`)
+                .then(response => {
+                    // Проверяем статус ответа
+                    if (!response.ok) {
+                        throw new Error(`Ошибка HTTP: ${response.status}`);
+                    }
+                    // Парсим JSON-ответ
+                    return response.json();
+                })
+                .then(responsibles => {
+                    console.log('Загружены ответственные:', responsibles);
+                    return responsibles; // Возвращаем данные для дальнейшего использования
+                })
+                .catch(error => {
+                    console.error('Ошибка при загрузке ответственных:', error.message);
+                    return []; // Возвращаем пустой массив в случае ошибки
+                });
+        }
+        function populateSelect(responsibles) {
+            const select = document.querySelector('#assignedSelect');
+            select.innerHTML = ''; // Очищаем предыдущие опции
+
+            if (!Array.isArray(responsibles)) {
+                console.error('responsibles не является массивом:', responsibles);
+                return;
+            }
+
+            responsibles.forEach(responsible => {
+                const option = document.createElement('option');
+                option.value = responsible.id; // ID для value
+                option.textContent = responsible.first_name || responsible.username || 'Без имени'; // Текстовое содержимое
+                select.appendChild(option);
+            });
+        }
+
+        function selectAssignedMembers(selectElement, membersString) {
+            if (!membersString) return;
+
+            const members = membersString.split(',').map(member => member.trim());
+            Array.from(selectElement.options).forEach(option => {
+                if (members.includes(option.textContent)) {
+                    option.selected = true;
+                }
+            });
+        }
+
 })();

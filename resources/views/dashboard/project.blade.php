@@ -108,11 +108,7 @@
                                     <div class="assigned d-flex flex-wrap"></div>
                                 </div>
                                 <div class="md-5">
-                                    <select name="assigned" id="assigned" multiple class="form-select">
-                                        <option value="1" selected>Alexey</option>
-                                        <option value="2">Ivan</option>
-                                        <option value="3">Sergey</option>
-                                        <option value="4">Alex</option>
+                                    <select name="assigned" id="assignedSelect" multiple class="form-select">
                                     </select>
                                 </div>
                                 <div class="mb-5">
