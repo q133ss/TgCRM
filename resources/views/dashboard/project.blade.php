@@ -14,6 +14,27 @@
     <!-- Page CSS -->
 
     <link rel="stylesheet" href="../../assets/vendor/css/pages/app-kanban.css" />
+    <style>
+        .delete-file-button {
+            position: relative;
+            left: -10px;
+            top: -30px;
+            margin-left: 5px; /* Отступ от текста ссылки */
+            background-color: red;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            line-height: 18px; /* Центрирование текста внутри кнопки */
+        }
+
+        .delete-file-button:hover {
+            background-color: darkred;
+        }
+    </style>
 @endsection
 @section('content')
     <!-- Content -->
@@ -252,7 +273,7 @@
     <script src="/assets/vendor/libs/jkanban/jkanban.js"></script>
     <script src="/assets/vendor/libs/quill/katex.js"></script>
     <script src="/assets/vendor/libs/quill/quill.js"></script>
-    
+
     <!-- Page JS -->
     <script src="/assets/js/app-kanban.js"></script>
 @endsection

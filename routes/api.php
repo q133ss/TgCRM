@@ -16,11 +16,21 @@ Route::put('/column-order/{project_id}', [\App\Http\Controllers\API\TaskControll
 Route::get('/task/{id}', [\App\Http\Controllers\API\TaskController::class, 'show']);
 Route::delete('/task/{id}', [\App\Http\Controllers\API\TaskController::class, 'delete']);
 Route::patch('/task/{id}', [\App\Http\Controllers\API\TaskController::class, 'update']);
-Route::post('/update/task/{id}', [\App\Http\Controllers\API\TaskController::class, 'update']);
+Route::post('/task/web/{id}', [\App\Http\Controllers\API\TaskController::class, 'updateForWeb']);
+Route::post('/update/task/{id}', [\App\Http\Controllers\API\TaskController::class, 'update']); // Что это?
 Route::get('/get-column-id/{task_id}', [\App\Http\Controllers\API\TaskController::class, 'getColumnById']);
 Route::get('/get-first-column/{project_id}', [\App\Http\Controllers\API\TaskController::class, 'getFirstColumn']);
 Route::post('/activity', [\App\Http\Controllers\ActivityController::class, 'store']);
 Route::put('/task/{id}/move', [\App\Http\Controllers\API\TaskController::class, 'move']);
+Route::delete('/file/{id}', [\App\Http\Controllers\API\FileController::class, 'delete']);
+
+// Kanban
+// TODO : Обновление задач
+// TODO : Удаление задач
+// TODO : Отображение активности по задачи
+// TODO : Добавить колонку
+// TODO : Удалить/Переименовать колонку
+// TODO : Переместить колонку
 
 // Задачи в календаре еще не добавлявляются и не обновляются
 # TODO url из webapp

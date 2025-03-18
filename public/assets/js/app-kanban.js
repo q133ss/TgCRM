@@ -119,19 +119,65 @@
             const filesDiv = document.querySelector('#files');
             filesDiv.innerHTML = ''; // Очищаем предыдущие файлы
 
-            if (files) {
-                const fileArray = files.split(',');
-                fileArray.forEach(file => {
-                    const trimmedFile = file.trim();
-                    if (/\.(jpg|jpeg|png|gif)$/i.test(trimmedFile)) {
-                        const link = createImageLink(trimmedFile);
-                        filesDiv.appendChild(link);
-                    } else {
-                        const link = createDocumentLink(trimmedFile);
+            if (task.files && task.files.length > 0) {
+                task.files.forEach(file => {
+                    const { src, id } = file; // Извлекаем src и id файла
+                    if (src) {
+                        // Создаем ссылку на файл или изображение
+                        let link;
+                        if (/\.(jpg|jpeg|png|gif)$/i.test(src)) {
+                            link = createImageLink(src, id);
+                        } else {
+                            link = createDocumentLink(src, id);
+                        }
+
+                        // Добавляем кнопку "X" внутрь ссылки
+                        const deleteButton = document.createElement('button');
+                        deleteButton.innerHTML = 'X';
+                        deleteButton.classList.add('delete-file-button');
+
+                        // Сохраняем ID файла в атрибуте data-id
+                        deleteButton.setAttribute('data-id', id);
+
+                        // Предотвращаем переход по ссылке при клике на кнопку
+                        deleteButton.addEventListener('click', async (event) => {
+                            event.preventDefault(); // Предотвращаем переход по ссылке
+                            event.stopPropagation(); // Останавливаем всплытие события
+
+                            const fileId = deleteButton.getAttribute('data-id'); // Получаем ID файла
+                            const confirmed = confirm('Вы уверены, что хотите удалить этот файл #'+fileId+'?');
+
+                            if (confirmed) {
+                                try {
+                                    // Отправляем AJAX-запрос на удаление файла
+                                    const urlParams = new URLSearchParams(window.location.search);
+                                    const uid = urlParams.get('uid');
+
+                                    const response = await fetch(`/api/file/${fileId}?uid=${uid}`, {
+                                        method: 'DELETE',
+                                    });
+
+                                    if (!response.ok) {
+                                        throw new Error('Ошибка при удалении файла');
+                                    }
+                                    // Удаляем ссылку с кнопкой из DOM
+                                    link.remove();
+                                } catch (error) {
+                                    console.error('Ошибка:', error.message);
+                                    alert('Не удалось удалить файл. Попробуйте позже.');
+                                }
+                            }
+                        });
+
+                        // Добавляем кнопку внутрь ссылки
+                        link.appendChild(deleteButton);
+
+                        // Добавляем ссылку в DOM
                         filesDiv.appendChild(link);
                     }
                 });
             }
+
             // Обновляем метку
             $('.kanban-update-item-sidebar').find(select2).val(label).trigger('change');
             // Обновляем участников
@@ -161,7 +207,7 @@
     }
 
     // Создаем ссылку для изображения
-    function createImageLink(src) {
+    function createImageLink(src, id) {
         const link = document.createElement('a');
         link.href = src;
         link.target = '_blank';
@@ -170,7 +216,10 @@
 
         const img = document.createElement('img');
         img.src = src;
+        img.alt = id;
+        img.title = 'Файл #'+id;
         img.style.maxWidth = '100px';
+        img.style.maxHeight = '60px';
         img.style.cursor = 'pointer';
 
         link.appendChild(img);
@@ -178,9 +227,11 @@
     }
 
     // Создаем ссылку для документа
-    function createDocumentLink(href) {
+    function createDocumentLink(href, id) {
         const link = document.createElement('a');
         link.href = href;
+        link.alt = id;
+        link.title = 'Файл #'+id;
         link.target = '_blank';
         link.textContent = 'Document';
         link.style.display = 'block';
@@ -850,15 +901,89 @@
           });
   }
 
-    updateTaskButton.addEventListener('click', function () {
+    function formatDate(dateString) {
+        let date = new Date(dateString);
+
+        // Извлечение года, месяца и дня
+        let year = date.getFullYear();
+        let month = String(date.getMonth() + 1).padStart(2, '0'); // Месяцы начинаются с 0
+        let day = String(date.getDate()).padStart(2, '0');
+
+        // Формирование строки в формате Y-m-d
+        return `${year}-${month}-${day}`;
+    }
+
+  updateTaskButton.addEventListener('click', function () {
         let taskID = this.getAttribute('data-id');
 
         let title = kanbanSidebar.querySelector('#title').value;
-        let date = kanbanSidebar.querySelector('#due-date').nextSibling.value;
+        let rawDate = kanbanSidebar.querySelector('#due-date').nextSibling.value;
         let description = kanbanSidebar.querySelector('#description').value;
-        let attachments = kanbanSidebar.querySelector('#attachments').value;
+        let assigned = kanbanSidebar.querySelector('#assigned').value;
+
+        let attachmentsInput = kanbanSidebar.querySelector('#attachments');
+        let attachments = attachmentsInput.files;
 
         // TODO ОТВЕТСВЕННЫЕ!!!!!!
+        let formData = new FormData();
+        let formattedDate = formatDate(rawDate);
+
+        // Добавление текстовых данных
+        formData.append('project_id', title);
+        formData.append('column_id', title);
+
+        formData.append('title', title);
+        formData.append('date', formattedDate);
+        formData.append('description', description);
+        formData.append('responsible[]', assigned);
+
+        // Добавление файлов
+        for (let i = 0; i < attachments.length; i++) {
+            formData.append('files[]', attachments[i]); // 'attachments[]' для массива файлов
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const uid = urlParams.get('uid');
+
+        fetch(`/api/get-column-id/${taskID}?uid=${uid}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Ошибка HTTP: ${response.status}`);
+                }
+                return response.json();
+            }).then(data => {
+                formData.append('column_id', data.id);
+
+                const path = window.location.pathname;
+                const match = path.match(/\/dashboard\/project\/(\d+)/);
+                const projectId = match ? match[1] : null;
+
+                if (!projectId) {
+                    console.error('ID проекта не найден в URL');
+                    return;
+                }
+                formData.append('project_id', projectId);
+
+                fetch(`/api/task/web/${taskID}?uid=${uid}`, {
+                    method: 'POST',
+                    body: formData,
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Ошибка HTTP: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('Задача успешно обновлена:', data);
+                    })
+                    .catch(error => {
+                        console.error('Ошибка при отправке данных:', error);
+                    });
+        })
+            .catch(error => {
+                console.error('Ошибка при отправке данных:', error);
+            });
 
         //activity(result.task.title, result.task.id);
     });

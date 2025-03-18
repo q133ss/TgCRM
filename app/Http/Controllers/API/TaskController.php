@@ -102,69 +102,6 @@ class TaskController extends Controller
         return response()->json($formattedData);
     }
 
-//    public function tasksForProject(string $id)
-//    {
-//        // Получаем задачи с присоединенной информацией о колонках
-//        $tasks = Task::leftJoin('columns', 'tasks.column_id', '=', 'columns.id')
-//            ->where('columns.project_id', $id)
-//            ->select(
-//                'tasks.id as task_id',
-//                'tasks.title as task_title',
-//                'tasks.date',
-//                'tasks.time',
-//                'tasks.description',
-//                'columns.id as column_id',
-//                'columns.title as column_title',
-//            )
-//            ->get();
-//
-//        // Группируем задачи по column_id
-//        $groupedTasks = $tasks->groupBy('column_id');
-//
-//        // Формируем выходной массив
-//        $formattedData = [];
-//        foreach ($groupedTasks as $columnId => $tasksInColumn) {
-//            // Название колонки берем из первого элемента группы
-//            $columnTitle = $tasksInColumn->first()->column_title ?? 'No Title';
-//
-//            // Формируем массив задач для текущей колонки
-//            $items = [];
-//            // В $tasksInColumn нет description
-//            foreach ($tasksInColumn as $task) {
-//                # TODO исправить!!!!
-//                $modelTask = Task::where('tasks.id',$task->task_id)->first();
-//                $responsibleNames = $modelTask?->responsible?->pluck('first_name');
-//                $allFiles = $modelTask->files;
-//                $files = $allFiles?->pluck('src')->all();
-//                $filesCount = $allFiles?->count();
-//
-//                $items[] = [
-//                    "id" => "task-" . $task->task_id,
-//                    "title" => $task->task_title, // Используем название задачи
-//                    "comments" => "0", // Заглушка
-//                    "description" => $task->description,
-//                    "badge-text" => "Без категории", // Заглушка
-//                    "badge" => "primary", // Заглушка
-//                    "due-date" => $task->date ? Carbon::parse($task->date)->format('j F') : 'No Date', // Форматируем дату
-//                    "attachments" => $filesCount,
-//                    "assigned" => $responsibleNames, // Заглушка
-//                    "members" => $responsibleNames,
-//                    "files" => $files
-//                ];
-//            }
-//
-//            // Добавляем колонку в выходной массив
-//            $formattedData[] = [
-//                "id" => $columnId,
-//                "title" => $columnTitle, // Название колонки
-//                "item" => $items
-//            ];
-//        }
-//
-//        // Возвращаем данные в формате JSON
-//        return response()->json($formattedData);
-//    }
-
     public function store(StoreRequest $request)
     {
         $data = $request->validated();
@@ -290,6 +227,7 @@ class TaskController extends Controller
 
             return response()->json(['task' => $task], 200);
         }catch (\Exception $exception){
+            \Log::error($exception);
             return response()->json(['message' => 'Попробуйте еще раз'], 500);
         }
     }
@@ -343,5 +281,62 @@ class TaskController extends Controller
             'column_id' => $request->column_id
         ]);
         return response()->json(['message' => 'true']);
+    }
+
+    public function updateForWeb(StoreRequest $request, string $id): \Illuminate\Http\JsonResponse
+    {
+        $data = $request->validated();
+        $text = $data['title'];
+
+        unset($data['title']);
+        unset($data['responsible']);
+        unset($data['reminder']);
+        unset($data['files']);
+        unset($data['old_files']);
+
+        $reminder = $data['reminder'] ?? null;
+        $project = Project::findOrFail($data['project_id']);
+        unset($data['project_id']);
+
+        $taskService = new TaskService();
+        $parsedDate = $taskService->parseDate($text);
+        $reminderTime = $taskService->parseReminderTime($text);
+        $cleanText = $taskService->cleanTextFromDateTime($text, $parsedDate, $reminderTime);
+        $data['title'] = $cleanText;
+
+        $task = Task::findOrFail($id);
+        \Log::info($data);
+        $updated = $task->update($data);
+
+        if(isset($data['responsible'])) {
+            DB::table('task_responsibles')->where(['task_id' => $task->id])->delete();
+            foreach ($data['responsible'] as $responsible) {
+                DB::table('task_responsibles')->insert([
+                    'task_id' => $task->id,
+                    'user_id' => $responsible,
+                ]);
+            }
+        }
+
+        // Сохраняем файлы, если они есть
+        if ($request->has('files')) {
+            foreach ($request->file('files') as $file) {
+                $filePath = '/storage/' . $file->store('files', 'public');
+                File::create([
+                    'src' => $filePath,
+                    'fileable_id' => $task->id,
+                    'fileable_type' => Task::class,
+                ]);
+            }
+        }
+
+        // Устанавливаем напоминание, если указано время
+        if ($reminderTime && $reminder == null) {
+            $taskService->scheduleReminder($task, $reminderTime, $project->chat_id);
+        }elseif(!$reminderTime && $reminder != null){
+            $taskService->scheduleReminder($task, $reminder, $project->chat_id);
+        }
+
+        return response()->json(['task' => $task], 200);
     }
 }

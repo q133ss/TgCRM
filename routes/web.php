@@ -28,3 +28,13 @@ Route::group(['prefix' => 'dashboard', 'as' => 'dashboard.'], function (){
     Route::get('/users', [\App\Http\Controllers\Dashboard\IndexController::class, 'index'])->name('users');
     Route::get('/faq', [\App\Http\Controllers\Dashboard\IndexController::class, 'index'])->name('faq');
 });
+
+Route::get('/qq', function (){
+    $file = \App\Models\File::findOrFail(11);
+
+
+    dd($exists);
+    if (\Illuminate\Support\Facades\Storage::exists('/storage/'.$file->src)) {
+        \Illuminate\Support\Facades\Storage::delete('/storage/'.$file->src);
+    }
+});
