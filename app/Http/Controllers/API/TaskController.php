@@ -82,6 +82,7 @@ class TaskController extends Controller
                         "badge-text" => "Без категории",
                         "badge" => "primary",
                         "due-date" => $task->date ? Carbon::parse($task->date)->format('j F') : 'No Date',
+                        "time" => $task->time,
                         "attachments" => $filesCount,
                         "assigned" => $responsibleNames,
                         "members" => $responsibleNames,

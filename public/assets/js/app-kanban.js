@@ -90,6 +90,7 @@
             // Заполняем модальное окно данными задачи
             const title = task.title || '';
             const date = task.date ? formatDate(task.date) : null;
+            let time = task.time || '';
             const description = task.description || '';
             const label = task.label || '';
             const avatars = task.responsible.map(user => user.first_name).join(', ');
@@ -106,6 +107,8 @@
             kanbanSidebar.querySelector('#title').value = title;
             kanbanSidebar.querySelector('#due-date').nextSibling.value = date;
             kanbanSidebar.querySelector('#description').value = description;
+
+            kanbanSidebar.querySelector('#taskTime').value = time;
 
             document.querySelector('#updateTask').setAttribute('data-id', task.id)
             document.querySelector('#deleteTask').setAttribute('data-id', task.id)
@@ -407,6 +410,7 @@
           ? date + ', ' + year
           : dateObj.getDate() + ' ' + dateObj.toLocaleString('en', { month: 'long' }) + ', ' + year,
         label = element.getAttribute('data-badge-text'),
+        taskTime = element.getAttribute('data-time'),
         avatars = element.getAttribute('data-assigned');
         let description = element.getAttribute('data-description');
         if(description === 'null'){
@@ -487,6 +491,7 @@
       // To get data on sidebar
       kanbanSidebar.querySelector('#title').value = title;
       kanbanSidebar.querySelector('#due-date').nextSibling.value = dateToUse;
+      kanbanSidebar.querySelector('#taskTime').value = taskTime;
       kanbanSidebar.querySelector('#description').value = description;
 
       // ! Using jQuery method to get sidebar due to select2 dependency
@@ -1014,11 +1019,27 @@
         return `${year}-${month}-${day}`;
     }
 
+    function normalizeTime(time) {
+        if (!time) return ''; // Если время пустое, возвращаем пустую строку
+
+        // Разбиваем строку на части по символу ":"
+        const parts = time.split(':');
+
+        // Если частей больше 2 (например, H:i:s), берем только первые две части
+        if (parts.length >= 2) {
+            return `${parts[0]}:${parts[1]}`;
+        }
+
+        // Если формат некорректный, возвращаем исходное значение
+        return time;
+    }
+
   updateTaskButton.addEventListener('click', function () {
         let taskID = this.getAttribute('data-id');
 
         let title = kanbanSidebar.querySelector('#title').value;
         let rawDate = kanbanSidebar.querySelector('#due-date').nextSibling.value;
+        let taskTime = kanbanSidebar.querySelector('#taskTime').value;
         let description = kanbanSidebar.querySelector('#description').value;
         //let assigned = kanbanSidebar.querySelector('#assignedSelect').value;
         let assignedSelect = kanbanSidebar.querySelector('#assignedSelect');
@@ -1035,6 +1056,7 @@
 
         formData.append('title', title);
         formData.append('date', formattedDate);
+        formData.append('time', normalizeTime(taskTime));
         formData.append('description', description);
         assignedValues.forEach(value => {
             formData.append('responsible[]', value);
@@ -1077,11 +1099,30 @@
                     .then(data => {
                         // Переименовать!
                         const element = document.querySelector('.kanban-drag div[data-eid="'+data.task.id+'"]');
+
                         if (element) {
                             const spanElement = element.querySelector('span.kanban-text');
                             if (spanElement) {
                                 spanElement.textContent = data.task.title;
                             }
+
+                            // Обновляем data
+                            element.setAttribute('data-title', title); // Заголовок задачи
+                            element.setAttribute('data-description', description); // Описание задачи
+                            element.setAttribute('data-due-date', formattedDate); // Дата
+                            element.setAttribute('data-time', normalizeTime(taskTime)); // Время
+                            element.setAttribute('data-assigned', assignedValues.join(', ')); // Ответственные
+                            element.setAttribute('data-members', assignedValues.join(', ')); // Участники
+
+                            // Обновляем список файлов (если переданы новые файлы)
+                            if (attachments && attachments.length > 0) {
+                                element.setAttribute('data-attachments', attachments.length);
+                                const existingFiles = element.getAttribute('data-files') || ''; // Существующие файлы
+                                const newFiles = attachments.map(file => file.url).join(','); // Новые файлы (преобразуем массив в строку)
+                                const updatedFiles = existingFiles ? `${existingFiles},${newFiles}` : newFiles; // Объединяем старые и новые файлы
+                                element.setAttribute('data-files', updatedFiles);
+                            }
+                            // end
                         }
                         activity("обновил задачу "+data.task.title, data.task.id);
                     })

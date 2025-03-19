@@ -103,6 +103,10 @@
                                     <input type="text" id="due-date" class="form-control" placeholder="Укажите дату" />
                                     <label for="due-date">Дата</label>
                                 </div>
+                                <div class="form-floating form-floating-outline mb-5">
+                                    <input type="time" id="taskTime" class="form-control" placeholder="Укажите время" />
+                                    <label for="taskTime">Время</label>
+                                </div>
                                 <div class="mb-5">
                                     <label class="form-label">Ответственные</label>
                                     <div class="assigned d-flex flex-wrap"></div>
