@@ -678,6 +678,7 @@
           const targetColumnId = target.parentNode.dataset.id; // Целевая колонка
 
           const targetNumber = targetColumnId.replace(/board-/g, '');
+          const targetColumn = document.querySelector(`.kanban-board[data-id="${targetColumnId}"]`);
 
           // 2. Получаем project_id и uid из URL
           const path = window.location.pathname;
@@ -700,7 +701,18 @@
                   return response.json();
               })
               .then(data => {
-                  // Дополнительные действия при успехе
+                  const targetDrag = targetColumn.querySelector('.kanban-drag');
+                  if (targetDrag && targetDrag.children.length > 0) {
+                      targetDrag.style.height = 'auto'; // Сбрасываем высоту
+                      const targetHeader = targetColumn.querySelector('.kanban-board-header');
+                      if (targetHeader) {
+                          const targetButton = targetHeader.querySelector('.kanban-title-button');
+                          if (targetButton) {
+                              targetButton.style.bottom = '0'; // Сбрасываем bottom
+                          }
+                      }
+                  }
+
                   activity('переместил задачу в колонку #'+targetNumber,taskId);
               })
               .catch(error => {
@@ -710,6 +722,31 @@
               });
       }
   });
+
+  // Исправляем ошибку связанную с высотой колонки!
+    document.querySelectorAll('.kanban-drag').forEach(dragContainer => {
+        // Проверяем, есть ли дочерние элементы внутри .kanban-drag
+        if (dragContainer.children.length === 0) {
+            // Устанавливаем высоту для пустого .kanban-drag
+            dragContainer.style.height = '500px';
+
+            // Находим родительскую колонку
+            const parentBoard = dragContainer.closest('.kanban-board');
+
+            if (parentBoard) {
+                // Находим заголовок колонки (.kanban-board-header)
+                const boardHeader = parentBoard.querySelector('.kanban-board-header');
+                if (boardHeader) {
+                    // Находим кнопку внутри заголовка (.kanban-title-button)
+                    const titleButton = boardHeader.querySelector('.kanban-title-button');
+                    if (titleButton) {
+                        // Устанавливаем bottom для кнопки
+                        titleButton.style.bottom = '500px';
+                    }
+                }
+            }
+        }
+    });
 
   // Kanban Wrapper scrollbar
   if (kanbanWrapper) {

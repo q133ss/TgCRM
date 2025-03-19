@@ -28,6 +28,7 @@ Route::get('/task/{id}/activity', [\App\Http\Controllers\API\TaskController::cla
 Route::resource('column', \App\Http\Controllers\API\ColumnController::class);
 
 // Kanban
+// TODO : Добавить время задачи + дату настроить что бы все работало!
 // TODO : Добавить колонку
 // TODO : Удалить/Переименовать колонку
 // TODO : Переместить колонку
