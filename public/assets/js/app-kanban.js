@@ -870,6 +870,8 @@
 
       // Remove current append new add new form
       if (kanbanAddNewInput) {
+          // ajax POST column
+          alert('Скоро будет готово')
         kanbanAddNewInput.forEach(el => {
           el.classList.add('d-none');
         });

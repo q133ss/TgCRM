@@ -25,6 +25,7 @@ Route::put('/task/{id}/move', [\App\Http\Controllers\API\TaskController::class, 
 Route::delete('/file/{id}', [\App\Http\Controllers\API\FileController::class, 'delete']);
 Route::get('/project/{id}/responsible', [\App\Http\Controllers\API\TaskController::class, 'responsibleForProject']);
 Route::get('/task/{id}/activity', [\App\Http\Controllers\API\TaskController::class, 'activity']);
+Route::resource('column', \App\Http\Controllers\API\ColumnController::class);
 
 // Kanban
 // TODO : Добавить колонку

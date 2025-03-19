@@ -695,4 +695,26 @@ if (typeof $ !== 'undefined') {
       });
     }
   });
+
+    function setTheme(theme) {
+        // Проверяем, что переданное значение является допустимым
+        if (!['dark', 'light', 'system'].includes(theme)) {
+            console.error('Недопустимое значение темы. Используйте "dark", "light" или "system".');
+            return;
+        }
+
+        // Определяем реальное значение темы для system
+        let actualTheme = theme;
+        if (theme === 'system') {
+            // Получаем предпочитаемую тему системы
+            actualTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+
+        // Обновляем localStorage
+        localStorage.setItem('templateCustomizer-vertical-menu-template--Style', actualTheme);
+        localStorage.setItem('theme', actualTheme);
+
+        // Выводим сообщение об успешном изменении
+        console.log(`Тема успешно установлена: ${theme} (реальная тема: ${actualTheme})`);
+    }
 }
